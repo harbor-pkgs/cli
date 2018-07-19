@@ -10,7 +10,7 @@ var regexHasPrefix = regexp.MustCompile(`^(\W+)([\w|-]*)$`)
 
 type CastFunc func(string, interface{}, interface{}) (interface{}, error)
 type ActionFunc func(*rule, string, []string, *int) error
-type StoreFunc func(string) error
+type StoreFunc func(string, int) error
 type CommandFunc func(context.Context, *Parser) (int, error)
 
 type ruleFlag int64
@@ -29,13 +29,13 @@ const (
 type rule struct {
 	Sequence    int
 	Name        string
-	RuleDesc    string
+	HelpMsg     string
 	Value       string
 	Default     *string
 	Aliases     []string
 	EnvVar      string
 	Choices     []string
-	StoreValue  StoreFunc
+	StoreFuncs  []StoreFunc
 	CommandFunc CommandFunc
 	flags       ruleFlag
 }
@@ -51,6 +51,14 @@ func (r *rule) SetFlag(flag ruleFlag) {
 func (r *rule) ClearFlag(flag ruleFlag) {
 	mask := r.flags ^ flag
 	r.flags &= mask
+}
+
+func (r *rule) StoreValue(value string, count int) error {
+	for _, f := range r.StoreFuncs {
+		if err := f(value, count); err != nil {
+			return fmt.Errorf("while storing '%s' %s", value, err)
+		}
+	}
 }
 
 func (r *rule) IsRequiredMessage() string {

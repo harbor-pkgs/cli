@@ -28,7 +28,7 @@ func Example_complete() {
 	parser.Add(&cli.Flag{
 		Help:    "Set our power level to over 5000!",
 		Int:     &conf.PowerLevel,
-		Aliases: []string{"-p"},
+		Aliases: []string{"p"},
 		Name:    "power-level",
 		Env:     "POWER_LEVEL",
 		Default: "10000",
@@ -39,7 +39,7 @@ func Example_complete() {
 		Help:    "Send a message to your enemies, make them quake in fear",
 		Default: "over-ten-thousand",
 		String:  &conf.Message,
-		Aliases: []string{"-m"},
+		Aliases: []string{"m"},
 		Name:    "message",
 		Env:     "MESSAGE",
 	})
@@ -49,7 +49,7 @@ func Example_complete() {
 		Help:        "List of weapons to choose from separated by a comma",
 		Default:     "vi,emacs,pico",
 		StringSlice: conf.Weapons,
-		Aliases:     []string{"-s"},
+		Aliases:     []string{"s"},
 		Name:        "weapons",
 		Env:         "WEAPONS",
 	})
@@ -57,23 +57,23 @@ func Example_complete() {
 	// Count the number of times an option is seen
 	parser.Add(&cli.Flag{
 		Help:    "Declare to the world after each evil is vanquished",
-		Aliases: []string{"-v"},
+		Aliases: []string{"v"},
 		Count:   &conf.Verbose,
 		Name:    "verbose",
 	})
 
 	// Set bool to true if the option is present on the command line
 	parser.Add(&cli.Flag{
-		Help:      "Turn on universe debug, it must give up it's secrets",
-		Aliases:   []string{"-d"},
-		Name:      "debug",
-		StoreTrue: &conf.Debug,
+		Help:    "Turn on universe debug, it must give up it's secrets",
+		Aliases: []string{"d"},
+		Name:    "debug",
+		Bool:    &conf.Debug,
 	})
 
 	// --help option is provided by default, however you can override
 	parser.Add(&cli.Flag{
 		Help:    "Show this help message and exit",
-		Aliases: []string{"-H"},
+		Aliases: []string{"H"},
 		Name:    "help",
 	})
 

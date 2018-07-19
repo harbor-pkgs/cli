@@ -1,13 +1,7 @@
 package cli
 
-const (
-	flagType int = 1 << iota
-	argType
-	cmdType
-)
-
 type Variant interface {
-	Type() int
+	toRule() *rule
 }
 
 type Flag struct {
@@ -23,12 +17,42 @@ type Flag struct {
 	Count       *int
 	StringSlice []string
 	IntSlice    []int
-	StoreTrue   *bool
 	Bool        *bool
+	StoreBool   *bool
 }
 
-func (f *Flag) Type() int {
-	return flagType
+func (f *Flag) toRule() *rule {
+	var funcs []StoreFunc
+
+	if f.Int != nil {
+		funcs = append(funcs, toInt(f.Int))
+	}
+	if f.String != nil {
+		funcs = append(funcs, toString(f.String))
+	}
+	if f.Count != nil {
+		funcs = append(funcs, toCount(f.Count))
+	}
+	if f.StringSlice != nil {
+		funcs = append(funcs, toStringSlice(f.StringSlice))
+	}
+	if f.IntSlice != nil {
+		funcs = append(funcs, toIntSlice(f.IntSlice))
+	}
+	if f.Bool != nil {
+		funcs = append(funcs, toBool(f.Bool))
+	}
+	if f.StoreBool != nil {
+		funcs = append(funcs, toStoreBool(f.StoreBool))
+	}
+
+	return &rule{
+		Name:       f.Name,
+		HelpMsg:    f.Help,
+		EnvVar:     f.Env,
+		Default:    &f.Default,
+		StoreFuncs: funcs,
+	}
 }
 
 type Argument struct {
@@ -61,5 +85,5 @@ func (f *Command) Type() int {
 }
 
 func (p *Parser) Add(v Variant) {
-
+	rule = v.toRule()
 }

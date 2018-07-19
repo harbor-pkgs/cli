@@ -38,6 +38,8 @@ type Parser struct {
 	Name string
 	// TODO: If defined will log parse and type errors to this logger
 	Logger StdLogger
+	// Provide an error function, defaults to a function that panics
+	ErrorFunc ErrorFunc
 
 	// The arguments we are tasked with parsing
 	argv []string
@@ -57,6 +59,10 @@ func New(parent *Parser) *Parser {
 	p := &Parser{
 		WordWrap:  parent.WordWrap,
 		EnvPrefix: parent.EnvPrefix,
+	}
+
+	if parent.ErrorFunc == nil {
+		p.ErrorFunc = panicFunc
 	}
 
 	// If rules exist, assume we are a sub parser and
@@ -86,6 +92,19 @@ func (p *Parser) setFlag(flag parseFlag) {
 func (p *Parser) clearFlag(flag parseFlag) {
 	mask := p.flags ^ flag
 	p.flags &= mask
+}
+
+func (p *Parser) ParseOrExit() {
+	retCode, err := p.Parse(context.Background(), os.Args)
+	if err != nil {
+		if IsHelpError(err) {
+			// TODO: Print Help message
+			fmt.Printf("HELP MESSAGE HERE\n")
+			os.Exit(retCode)
+		}
+		fmt.Fprintln(os.Stderr, err.Error())
+		os.Exit(retCode)
+	}
 }
 
 // Parses command line arguments using os.Args if 'args' is nil.
@@ -131,8 +150,8 @@ func (p *Parser) Parse(ctx context.Context, argv []string) (int, error) {
 	}
 
 	// If they asked for help
-	if p.askedForHelp() {
-		// Print Help and return Help error
+	if p.AskedForHelp() {
+		return errorCode, &HelpError{}
 	}
 
 	// If we get here, we are at the top of the parent tree and can collect values
@@ -144,7 +163,7 @@ func (p *Parser) Parse(ctx context.Context, argv []string) (int, error) {
 	// Retrieve values from any stores provided by the user
 	for _, store := range p.stores {
 		if err := results.From(ctx, store); err != nil {
-			return errorCode, fmt.Errorf("while reading from store '%s': %s", store.Name(), err)
+			return errorCode, fmt.Errorf("while reading from store '%s': %s", store.Source(), err)
 		}
 	}
 	// Apply defaults and validate required values are provided then store values
@@ -174,7 +193,7 @@ func (p *Parser) nextSubCmd() CommandFunc {
 	return nil
 }
 
-func (p *Parser) askedForHelp() bool {
+func (p *Parser) AskedForHelp() bool {
 	return p.syntax.FindWithFlag(IsHelpRule) != nil
 }
 

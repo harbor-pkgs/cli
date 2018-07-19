@@ -7,6 +7,7 @@ import (
 )
 
 var regexInValidRuleName = regexp.MustCompile(`[!"#$&'/()*;<>{|}\\\\~\s]`)
+var regexHasNonWordPrefix = regexp.MustCompile(`^(\W+)([\w|-]*)$`)
 
 type rules []*rule
 
@@ -54,11 +55,19 @@ func (s rules) ValidateRules() error {
 			}
 		}
 
+		if rule.Name == "" {
+			return fmt.Errorf("refusing to parse %s with no name'", rule.Type())
+		}
+
+		if regexHasNonWordPrefix.MatchString(rule.Name) {
+			return fmt.Errorf("'%s' is an invalid name for an '%s'", rule.Name, rule.Type())
+		}
+
 		// Check for invalid option and argument names
 		if regexInValidRuleName.MatchString(rule.Name) {
 			if !strings.HasPrefix(rule.Name, subCmdNamePrefix) {
-				return fmt.Errorf("bad argument or flag '%s'; contains invalid characters",
-					rule.Name)
+				return fmt.Errorf("bad %s '%s'; contains invalid characters",
+					rule.Type(), rule.Name)
 			}
 		}
 
@@ -80,6 +89,18 @@ func (s rules) ValidateRules() error {
 		}
 	}
 	return nil
+}
+
+func (r rule) Type() string {
+	switch {
+	case r.HasFlag(IsFlag):
+		return "flag"
+	case r.HasFlag(IsArgument):
+		return "argument"
+	case r.HasFlag(IsCommand):
+		return "command"
+	}
+	return "unknown"
 }
 
 func (s rules) GetRule(name string) *rule {
