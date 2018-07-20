@@ -17,7 +17,7 @@ func toInt(ptr *int) StoreFunc {
 	}
 }
 
-func toBool(ptr *bool) StoreFunc {
+func hasValue(ptr *bool) StoreFunc {
 	return func(value string, count int) error {
 		if count != 0 {
 			*ptr = true
@@ -26,7 +26,7 @@ func toBool(ptr *bool) StoreFunc {
 	}
 }
 
-func toStoreBool(ptr *bool) StoreFunc {
+func toBool(ptr *bool) StoreFunc {
 	return func(value string, count int) error {
 		b, err := strconv.ParseBool(value)
 		if err != nil {

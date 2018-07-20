@@ -16,7 +16,7 @@ type syntax struct {
 }
 
 // Returns the all nodes that have the specified rule
-func (s syntax) FindRule(rule *rule) nodes {
+func (s syntax) FindRules(rule *rule) nodes {
 	var result nodes
 	for _, node := range s.nodes {
 		if node.Rule == rule {
@@ -36,11 +36,11 @@ func (s syntax) FindWithFlag(flag ruleFlag) nodes {
 	return result
 }
 
-func (tm *syntax) Add(node *node) {
-	tm.nodes[node.Pos] = node
+func (s *syntax) Add(node *node) {
+	s.nodes[node.Pos] = node
 }
 
-func (tm *syntax) Contains(pos int) bool {
-	_, ok := tm.nodes[pos]
+func (s *syntax) Contains(pos int) bool {
+	_, ok := s.nodes[pos]
 	return ok
 }

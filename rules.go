@@ -11,31 +11,31 @@ var regexHasNonWordPrefix = regexp.MustCompile(`^(\W+)([\w|-]*)$`)
 
 type rules []*rule
 
-func (s rules) Len() int {
-	return len(s)
+func (r rules) Len() int {
+	return len(r)
 }
 
-func (s rules) Less(left, right int) bool {
-	return s[left].Sequence < s[right].Sequence
+func (r rules) Less(left, right int) bool {
+	return r[left].Sequence < r[right].Sequence
 }
 
-func (s rules) Swap(left, right int) {
-	s[left], s[right] = s[right], s[left]
+func (r rules) Swap(left, right int) {
+	r[left], r[right] = r[right], r[left]
 }
 
-func (s rules) ValidateRules() error {
+func (r rules) ValidateRules() error {
 	var greedyRule *rule
-	for idx, rule := range s {
+	for idx, rule := range r {
 		// Duplicate rule check
 		next := idx + 1
-		if next < len(s) {
-			for ; next < len(s); next++ {
+		if next < len(r) {
+			for ; next < len(r); next++ {
 				// If the names are the same
-				if rule.Name == s[next].Name {
+				if rule.Name == r[next].Name {
 					return fmt.Errorf("duplicate argument or flag '%s' defined", rule.Name)
 				}
 				// If the alias is a duplicate
-				for _, alias := range s[next].Aliases {
+				for _, alias := range r[next].Aliases {
 					var duplicate string
 
 					// if rule.Aliases contains 'alias'
@@ -46,10 +46,10 @@ func (s rules) ValidateRules() error {
 					}
 					if len(duplicate) != 0 {
 						return fmt.Errorf("duplicate alias '%s' for '%s' redefined by '%s'",
-							duplicate, rule.Name, s[next].Name)
+							duplicate, rule.Name, r[next].Name)
 					}
 				}
-				if rule.Name == s[next].Name {
+				if rule.Name == r[next].Name {
 					return fmt.Errorf("duplicate argument or flag '%s' defined", rule.Name)
 				}
 			}
@@ -103,8 +103,8 @@ func (r rule) Type() string {
 	return "unknown"
 }
 
-func (s rules) GetRule(name string) *rule {
-	for _, rule := range s {
+func (r rules) GetRule(name string) *rule {
+	for _, rule := range r {
 		if rule.Name == name {
 			return rule
 		}
@@ -112,8 +112,8 @@ func (s rules) GetRule(name string) *rule {
 	return nil
 }
 
-func (s rules) RuleWithFlag(flag ruleFlag) *rule {
-	for _, rule := range s {
+func (r rules) RuleWithFlag(flag ruleFlag) *rule {
+	for _, rule := range r {
 		if rule.HasFlag(flag) {
 			return rule
 		}

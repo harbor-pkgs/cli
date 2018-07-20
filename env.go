@@ -19,19 +19,19 @@ func (e *envStore) Source() string {
 	return envSource
 }
 
-func (e *envStore) Get(ctx context.Context, name string) (string, bool) {
+func (e *envStore) Get(ctx context.Context, name string) (string, int) {
 	rule := e.rules.GetRule(name)
 	if rule == nil {
-		return "", false
+		return "", 0
 	}
 
 	if rule.EnvVar != "" {
-		return "", false
+		return "", 0
 	}
 
 	value := os.Getenv(rule.EnvVar)
 	if value == "" {
-		return "", false
+		return "", 0
 	}
-	return value, true
+	return value, 1
 }

@@ -2,12 +2,10 @@ package cli
 
 import (
 	"context"
-	"errors"
-	"fmt"
-	"strings"
 )
 
 type valueSrc struct {
+	count  int
 	source string
 	value  string
 }
@@ -19,7 +17,7 @@ type resultStore struct {
 
 type FromStore interface {
 	Source() string
-	Get(context.Context, string) (string, bool)
+	Get(context.Context, string) (string, int)
 }
 
 func newResultStore(rules rules) *resultStore {
@@ -30,9 +28,10 @@ func newResultStore(rules rules) *resultStore {
 
 func (rs *resultStore) From(ctx context.Context, from FromStore) error {
 	for _, rule := range rs.rules {
-		if value, ok := from.Get(ctx, rule.Name); ok {
+		if value, count := from.Get(ctx, rule.Name); count != 0 {
 			rs.values[rule.Name] = valueSrc{
 				source: from.Source(),
+				count:  count,
 				value:  value,
 			}
 		}
@@ -40,39 +39,18 @@ func (rs *resultStore) From(ctx context.Context, from FromStore) error {
 	return nil
 }
 
-func (rs *resultStore) Apply() (int, error) {
-	for _, rule := range rs.rules {
-
-		// apply default value if provided
-		if _, ok := rs.values[rule.Name]; !ok {
-			// Set the default value if provided
-			if rule.Default != nil {
-				rs.values[rule.Name] = valueSrc{
-					source: defaultSource,
-					value:  *rule.Default,
-				}
-			}
-		}
-
-		// if has no value
-		value, ok := rs.values[rule.Name]
-		if !ok {
-			// and is required
-			if rule.HasFlag(IsRequired) {
-				return errorCode, errors.New(rule.IsRequiredMessage())
-			}
-			continue
-		}
-
-		// ensure the value matches one of our choices
-		if len(rule.Choices) != 0 {
-			if !ContainsString(value.value, rule.Choices, nil) {
-				return errorCode, fmt.Errorf("'%s' is an invalid argument for '%s' choose from (%s)",
-					value.value, rule.Name, strings.Join(rule.Choices, ", "))
-			}
-		}
-
-		rule.StoreValue(value.value)
+func (rs *resultStore) Get(ctx context.Context, name string) (string, int) {
+	value, ok := rs.values[name]
+	if ok {
+		return value.value, value.count
 	}
-	return 0, nil
+	return "", 0
+}
+
+func (rs *resultStore) Set(name, source, value string, count int) {
+	rs.values[name] = valueSrc{
+		source: source,
+		value:  value,
+		count:  count,
+	}
 }

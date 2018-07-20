@@ -167,13 +167,76 @@ func (p *Parser) Parse(ctx context.Context, argv []string) (int, error) {
 		}
 	}
 	// Apply defaults and validate required values are provided then store values
-	return results.Apply()
+	return p.apply(results)
 }
 
-func (p *Parser) Get(ctx context.Context, key string) (string, bool) {
-	// Count the number of times a flag was seen
+func (p *Parser) apply(rs *resultStore) (int, error) {
+	for _, rule := range p.rules {
+
+		// If the user dis-allows the flag to be provided more than once, check for multiple
+		if rule.HasFlag(IsFlag) && !rule.HasFlag(IsGreedy) {
+			var count int
+			for _, node := range p.syntax.FindRules(rule) {
+				count += node.Count
+			}
+			if count > 1 {
+				return errorCode, fmt.Errorf("unexpected duplicate flag '%s'", rule.Name)
+			}
+		}
+
+		// apply default value if provided
+		if _, count := rs.Get(context.Background(), rule.Name); count == 0 {
+			// Set the default value if provided
+			if rule.Default != nil {
+				rs.Set(rule.Name, defaultSource, *rule.Default, 1)
+			}
+		}
+
+		// if has no value
+		value, count := rs.Get(context.Background(), rule.Name)
+		if count == 0 {
+			// and is required
+			if rule.HasFlag(IsRequired) {
+				return errorCode, errors.New(rule.IsRequiredMessage())
+			}
+			continue
+		}
+
+		// ensure the value matches one of our choices
+		if len(rule.Choices) != 0 {
+			if !ContainsString(value, rule.Choices, nil) {
+				return errorCode, fmt.Errorf("'%s' is an invalid argument for '%s' choose from (%s)",
+					value, rule.Name, strings.Join(rule.Choices, ", "))
+			}
+		}
+
+		rule.StoreValue(value, count)
+
+		return 0, nil
+	}
+}
+
+func (p *Parser) Get(ctx context.Context, key string) (string, int) {
+	rule := p.rules.GetRule(key)
+	if rule == nil {
+		return "", 0
+	}
+
+	var count int
+	var value string
+	// Count the number of times this flag was seen
+	for _, node := range p.syntax.FindRules(rule) {
+		count += node.Count
+
+		// In the odd case where the flag was provided more than twice
+		// Only collect the final flags value if provided
+		if node.Value != nil {
+			value = *node.Value
+		}
+	}
+
 	// report if flag was seen and is true
-	return "", false
+	return "", count
 }
 
 func (p *Parser) Source() string {
@@ -285,7 +348,7 @@ func (p *Parser) parse(pos int) error {
 			}
 
 			// If we haven't already match this rule with an argument
-			if p.syntax.FindRule(rule) == nil {
+			if p.syntax.FindRules(rule) == nil {
 				p.syntax.Add(&node{
 					Pos:   pos,
 					Value: &p.argv[0],
