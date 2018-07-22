@@ -2,6 +2,7 @@ package cli
 
 import (
 	"context"
+	"encoding/json"
 	"errors"
 	"fmt"
 	"os"
@@ -173,70 +174,83 @@ func (p *Parser) Parse(ctx context.Context, argv []string) (int, error) {
 func (p *Parser) apply(rs *resultStore) (int, error) {
 	for _, rule := range p.rules {
 
-		// If the user dis-allows the flag to be provided more than once, check for multiple
-		if rule.HasFlag(IsFlag) && !rule.HasFlag(IsGreedy) {
-			var count int
-			for _, node := range p.syntax.FindRules(rule) {
-				count += node.Count
-			}
-			if count > 1 {
-				return errorCode, fmt.Errorf("unexpected duplicate flag '%s'", rule.Name)
-			}
-		}
+		// get the value and how many instances of it where provided on the command line
+		value, count := p.Get(context.Background(), rule.Name, rule.ValueType())
 
-		// apply default value if provided
-		if _, count := rs.Get(context.Background(), rule.Name); count == 0 {
+		// if no instances of this rule where found
+		if count == 0 {
 			// Set the default value if provided
 			if rule.Default != nil {
 				rs.Set(rule.Name, defaultSource, *rule.Default, 1)
+			} else {
+				// and is required
+				if rule.HasFlag(IsRequired) {
+					return errorCode, errors.New(rule.IsRequiredMessage())
+				}
 			}
 		}
 
-		// if has no value
-		value, count := rs.Get(context.Background(), rule.Name)
-		if count == 0 {
-			// and is required
-			if rule.HasFlag(IsRequired) {
-				return errorCode, errors.New(rule.IsRequiredMessage())
+		// if the user dis-allows the flag to be provided more than once
+		if count > 1 {
+			if rule.HasFlag(IsFlag) && !rule.HasFlag(IsGreedy) {
+				return errorCode, fmt.Errorf("unexpected duplicate flag '%s' provided", rule.Name)
 			}
-			continue
+		}
+
+		// If has no value
+		if value == nil {
+			// TODO: Check for IsCount and ExecpectValue and return error
+			// Use the count as the value
+			value = fmt.Sprintf("%d", count)
 		}
 
 		// ensure the value matches one of our choices
 		if len(rule.Choices) != 0 {
-			if !ContainsString(value, rule.Choices, nil) {
-				return errorCode, fmt.Errorf("'%s' is an invalid argument for '%s' choose from (%s)",
-					value, rule.Name, strings.Join(rule.Choices, ", "))
+			switch t := value.(type) {
+			case string:
+				if !ContainsString(t, rule.Choices, nil) {
+					return errorCode, fmt.Errorf("'%s' is an invalid argument for '%s' choose from (%s)",
+						value, rule.Name, strings.Join(rule.Choices, ", "))
+				}
+			case []string:
+				for _, i := range t {
+					if !ContainsString(i, rule.Choices, nil) {
+						return errorCode, fmt.Errorf("'%s' is an invalid argument for '%s' choose from (%s)",
+							value, rule.Name, strings.Join(rule.Choices, ", "))
+					}
+				}
 			}
 		}
 
 		rule.StoreValue(value, count)
-
-		return 0, nil
 	}
+	return 0, nil
 }
 
-func (p *Parser) Get(ctx context.Context, key string) (string, int) {
+func (p *Parser) Get(ctx context.Context, key string, typ ValueType) (interface{}, int) {
 	rule := p.rules.GetRule(key)
 	if rule == nil {
 		return "", 0
 	}
 
-	var count int
-	var value string
+	var list []string
 	// Count the number of times this flag was seen
 	for _, node := range p.syntax.FindRules(rule) {
-		count += node.Count
-
-		// In the odd case where the flag was provided more than twice
-		// Only collect the final flags value if provided
 		if node.Value != nil {
-			value = *node.Value
+			list = append(list, *node.Value)
 		}
 	}
 
-	// report if flag was seen and is true
-	return "", count
+	if len(list) == 0 {
+		return list[0], 1
+	}
+
+	// If found multiple flags with values, return them as a JSON list of strings
+	value, err := json.Marshal(list)
+	if err != nil {
+		p.ErrorFunc(fmt.Sprintf("during Parser.Get() while marshaling values to list: %s", err))
+	}
+	return string(value), len(list)
 }
 
 func (p *Parser) Source() string {

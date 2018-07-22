@@ -7,7 +7,7 @@ import (
 type valueSrc struct {
 	count  int
 	source string
-	value  string
+	value  interface{}
 }
 
 type resultStore struct {
@@ -17,7 +17,7 @@ type resultStore struct {
 
 type FromStore interface {
 	Source() string
-	Get(context.Context, string) (string, int)
+	Get(context.Context, string, ValueType) (interface{}, int)
 }
 
 func newResultStore(rules rules) *resultStore {
@@ -28,7 +28,7 @@ func newResultStore(rules rules) *resultStore {
 
 func (rs *resultStore) From(ctx context.Context, from FromStore) error {
 	for _, rule := range rs.rules {
-		if value, count := from.Get(ctx, rule.Name); count != 0 {
+		if value, count := from.Get(ctx, rule.Name, rule.ValueType()); count != 0 {
 			rs.values[rule.Name] = valueSrc{
 				source: from.Source(),
 				count:  count,
@@ -39,7 +39,7 @@ func (rs *resultStore) From(ctx context.Context, from FromStore) error {
 	return nil
 }
 
-func (rs *resultStore) Get(ctx context.Context, name string) (string, int) {
+func (rs *resultStore) Get(ctx context.Context, name string, valType ValueType) (interface{}, int) {
 	value, ok := rs.values[name]
 	if ok {
 		return value.value, value.count
@@ -47,7 +47,7 @@ func (rs *resultStore) Get(ctx context.Context, name string) (string, int) {
 	return "", 0
 }
 
-func (rs *resultStore) Set(name, source, value string, count int) {
+func (rs *resultStore) Set(name, source string, value interface{}, count int) {
 	rs.values[name] = valueSrc{
 		source: source,
 		value:  value,

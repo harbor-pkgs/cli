@@ -54,6 +54,7 @@ func (r rules) ValidateRules() error {
 				}
 			}
 		}
+		// TODO: rules cannot store map and slices simultaneously check for flags set and error if both exists
 
 		if rule.Name == "" {
 			return fmt.Errorf("refusing to parse %s with no name'", rule.Type())
@@ -89,6 +90,24 @@ func (r rules) ValidateRules() error {
 		}
 	}
 	return nil
+}
+
+type ValueType string
+
+const (
+	StringType ValueType = "string"
+	ListType   ValueType = "list"
+	MapType    ValueType = "map"
+)
+
+func (r rule) ValueType() ValueType {
+	switch {
+	case r.HasFlag(IsList):
+		return ListType
+	case r.HasFlag(IsMap):
+		return MapType
+	}
+	return StringType
 }
 
 func (r rule) Type() string {

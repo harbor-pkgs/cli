@@ -129,6 +129,7 @@ func (a *Argument) toRule() *rule {
 		funcs = append(funcs, toBool(a.Bool))
 	}
 
+	// TODO: Support map
 	r.StoreFuncs = funcs
 
 	return r
@@ -151,5 +152,6 @@ func (a *Command) toRule() *rule {
 }
 
 func (p *Parser) Add(v Variant) {
+	// TODO: Support adding multiple variants with the same Add() call
 	p.rules = append(p.rules, v.toRule())
 }
