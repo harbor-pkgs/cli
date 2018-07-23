@@ -67,7 +67,7 @@ func Example_complete() {
 		Help:     "Turn on universe debug, it must give up it's secrets",
 		Aliases:  []string{"d"},
 		Name:     "debug",
-		HasValue: &conf.Debug,
+		IfExists: &conf.Debug,
 	})
 
 	// --help option is provided by default, however you can override
@@ -90,7 +90,7 @@ func Example_complete() {
 		Help:        "List of villains to vanquish",
 		Name:        "the-villains",
 		StringSlice: conf.Villains,
-		IsGreedy:    true,
+		CanRepeat:   true,
 	})
 
 	// ParseOrExit() is just a convenience, you can call
@@ -107,4 +107,6 @@ func Example_complete() {
 	fmt.Printf("Villains     '%v'\n", conf.Villains)
 	fmt.Printf("Debug        '%v'\n", conf.Debug)
 	fmt.Println("")
+
+	// TODO: Demo greedy options [SRC... DST]
 }

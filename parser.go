@@ -2,15 +2,12 @@ package cli
 
 import (
 	"context"
-	"encoding/json"
 	"errors"
 	"fmt"
 	"os"
 	"sort"
 	"strings"
 )
-
-type parseFlag int64
 
 const (
 	// Used to identify the named rule is a command
@@ -23,9 +20,6 @@ const (
 	cliSource     = "cli-args"
 	envSource     = "cli-env"
 	defaultSource = "cli-default"
-
-	IsFormatted parseFlag = 1 << iota
-	AddHelpFlag
 )
 
 type Parser struct {
@@ -37,6 +31,10 @@ type Parser struct {
 	Desc string
 	// The name of the application
 	Name string
+	// If set to true, un-matched arguments on the command line result in parse errors
+	ErrOnUnknownArgs bool
+	// If set to true, avoid adding a --help, -h option
+	NoHelp bool
 	// TODO: If defined will log parse and type errors to this logger
 	Logger StdLogger
 	// Provide an error function, defaults to a function that panics
@@ -48,8 +46,6 @@ type Parser struct {
 	syntax syntax
 	// Sorted list of parsing rules
 	rules rules
-	// flags that modify parser behavior
-	flags parseFlag
 	// Our parent parser if this instance is a sub-parser
 	parent *Parser
 	// A collection of stores provided by the user for retrieving values
@@ -58,13 +54,13 @@ type Parser struct {
 
 func New(parent *Parser) *Parser {
 	p := &Parser{
-		WordWrap:  parent.WordWrap,
-		EnvPrefix: parent.EnvPrefix,
+		WordWrap:         parent.WordWrap,
+		EnvPrefix:        parent.EnvPrefix,
+		ErrOnUnknownArgs: parent.ErrOnUnknownArgs,
+		ErrorFunc:        parent.ErrorFunc,
 	}
 
-	if parent.ErrorFunc == nil {
-		p.ErrorFunc = panicFunc
-	}
+	SetDefault(&p.ErrorFunc, panicFunc)
 
 	// If rules exist, assume we are a sub parser and
 	// copy all the private fields
@@ -73,26 +69,9 @@ func New(parent *Parser) *Parser {
 		p.argv = parent.argv
 		p.syntax = parent.syntax
 		p.rules = parent.rules
-		p.flags = parent.flags
-		p.flags = parent.flags
 		p.stores = parent.stores
-	} else {
-		// TODO: Set flags
 	}
 	return p
-}
-
-func (p *Parser) hasFlag(flag parseFlag) bool {
-	return p.flags&flag != 0
-}
-
-func (p *Parser) setFlag(flag parseFlag) {
-	p.flags = p.flags | flag
-}
-
-func (p *Parser) clearFlag(flag parseFlag) {
-	mask := p.flags ^ flag
-	p.flags &= mask
 }
 
 func (p *Parser) ParseOrExit() {
@@ -108,6 +87,7 @@ func (p *Parser) ParseOrExit() {
 	}
 }
 
+// TODO: Support out of band command bash completions and in-band bash completions
 // Parses command line arguments using os.Args if 'args' is nil.
 func (p *Parser) Parse(ctx context.Context, argv []string) (int, error) {
 	var err error
@@ -124,9 +104,13 @@ func (p *Parser) Parse(ctx context.Context, argv []string) (int, error) {
 	// If we are the top most parent
 	if p.parent == nil {
 		// If user requested we add a help flag, and if one is not already defined
-		if p.hasFlag(AddHelpFlag) && p.rules.RuleWithFlag(IsHelpRule) == nil {
-			// TODO: Add a help flag
-			// p.AddFlag("--help").Alias("-h").IsTrue().Help("Display a help message and exit")
+		if !p.NoHelp && p.rules.RuleWithFlag(IsHelpRule) == nil {
+			p.Add(&Flag{
+				Help:       "display this help message and exit",
+				Name:       "help",
+				IsHelpFlag: true,
+				Aliases:    []string{"h"},
+			})
 		}
 	}
 
@@ -139,19 +123,27 @@ func (p *Parser) Parse(ctx context.Context, argv []string) (int, error) {
 	sort.Sort(p.rules)
 
 	if err := p.parse(0); err != nil {
-		// report missing flag values
+		// report flags that expect values
 		return errorCode, err
 	}
 
 	subCmd := p.nextSubCmd()
 	if subCmd != nil {
 		// Run the sub command
-		// TODO: Might not need to make a copy of ourselves
+		// TODO: Might not need to make a copy of ourselves, just pass in the current parser
 		return subCmd(ctx, New(p))
 	}
 
+	// If the user asked to error on unknown arguments
+	if p.ErrOnUnknownArgs {
+		args := p.UnProcessedArgs()
+		if len(args) != 0 {
+			return errorCode, fmt.Errorf("provided but not defined '%s'", args[0])
+		}
+	}
+
 	// If they asked for help
-	if p.AskedForHelp() {
+	if p.rules.RuleWithFlag(IsHelpRule) != nil {
 		return errorCode, &HelpError{}
 	}
 
@@ -171,11 +163,28 @@ func (p *Parser) Parse(ctx context.Context, argv []string) (int, error) {
 	return p.apply(results)
 }
 
+// Returns a list of all unknown arguments found on the command line if `ErrOnUnknownArgs = true`
+func (p *Parser) UnProcessedArgs() []string {
+	var r []string
+	for i, arg := range p.argv {
+		if !p.syntax.Contains(i) {
+			r = append(r, arg)
+		}
+	}
+	return r
+}
+
 func (p *Parser) apply(rs *resultStore) (int, error) {
+	// TODO: Support option exclusion `--option1 | --option2`
+	// TODO: Support option dependency (option2 cannot be used unless option1 is also defined)
+
 	for _, rule := range p.rules {
 
-		// get the value and how many instances of it where provided on the command line
-		value, count := p.Get(context.Background(), rule.Name, rule.ValueType())
+		// get the value and how many instances of it where provided via the command line
+		value, count, err := p.Get(context.Background(), rule.Name, rule.ValueType())
+		if err != nil {
+			return errorCode, err
+		}
 
 		// if no instances of this rule where found
 		if count == 0 {
@@ -199,7 +208,7 @@ func (p *Parser) apply(rs *resultStore) (int, error) {
 
 		// If has no value
 		if value == nil {
-			// TODO: Check for IsCount and ExecpectValue and return error
+			// TODO: Check for IsCount and ExpectValue and return error
 			// Use the count as the value
 			value = fmt.Sprintf("%d", count)
 		}
@@ -227,30 +236,49 @@ func (p *Parser) apply(rs *resultStore) (int, error) {
 	return 0, nil
 }
 
-func (p *Parser) Get(ctx context.Context, key string, typ ValueType) (interface{}, int) {
+// TODO: Look into removing the 'int' return value.
+func (p *Parser) Get(ctx context.Context, key string, valueType ValueType) (interface{}, int, error) {
 	rule := p.rules.GetRule(key)
 	if rule == nil {
-		return "", 0
+		return "", 0, nil
 	}
 
-	var list []string
-	// Count the number of times this flag was seen
+	// TODO: If user requests positional only arguments, eliminate args/flags we find that are not in our range
+
+	var values []string
+	// collect all the values for this rule
 	for _, node := range p.syntax.FindRules(rule) {
 		if node.Value != nil {
-			list = append(list, *node.Value)
+			values = append(values, *node.Value)
 		}
 	}
 
-	if len(list) == 0 {
-		return list[0], 1
+	if len(values) == 0 {
+		return nil, 0, nil
 	}
 
-	// If found multiple flags with values, return them as a JSON list of strings
-	value, err := json.Marshal(list)
-	if err != nil {
-		p.ErrorFunc(fmt.Sprintf("during Parser.Get() while marshaling values to list: %s", err))
+	switch valueType {
+	case StringType:
+		return values[0], 1, nil
+	case ListType:
+		return values, len(values), nil
+	case MapType:
+		// each string in the list should be a key value pair
+		// either in the form `key=value` or `{"key": "value"}`
+		r := make(map[string]string)
+		for _, value := range values {
+			kv, err := StringToMap(value)
+			if err != nil {
+				return nil, 0, fmt.Errorf("during Parser.Get() map conversion error: %s", err)
+			}
+			// Merge the key values for each of the items
+			for k, v := range kv {
+				r[k] = v
+			}
+		}
+		return r, len(r), nil
 	}
-	return string(value), len(list)
+	return nil, 0, fmt.Errorf("no such value type '%s'", valueType)
 }
 
 func (p *Parser) Source() string {
@@ -268,10 +296,6 @@ func (p *Parser) nextSubCmd() CommandFunc {
 		}
 	}
 	return nil
-}
-
-func (p *Parser) AskedForHelp() bool {
-	return p.syntax.FindWithFlag(IsHelpRule) != nil
 }
 
 func (p *Parser) parse(pos int) error {

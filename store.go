@@ -17,7 +17,7 @@ type resultStore struct {
 
 type FromStore interface {
 	Source() string
-	Get(context.Context, string, ValueType) (interface{}, int)
+	Get(context.Context, string, ValueType) (interface{}, int, error)
 }
 
 func newResultStore(rules rules) *resultStore {
@@ -28,7 +28,11 @@ func newResultStore(rules rules) *resultStore {
 
 func (rs *resultStore) From(ctx context.Context, from FromStore) error {
 	for _, rule := range rs.rules {
-		if value, count := from.Get(ctx, rule.Name, rule.ValueType()); count != 0 {
+		value, count, err := from.Get(ctx, rule.Name, rule.ValueType())
+		if err != nil {
+			return err
+		}
+		if count != 0 {
 			rs.values[rule.Name] = valueSrc{
 				source: from.Source(),
 				count:  count,

@@ -11,14 +11,16 @@ type Flag struct {
 	Default    string
 	Aliases    []string
 	IsRequired bool
-	IsGreedy   bool
+	CanRepeat  bool
+	IsHelpFlag bool
+	DependsOn  string
 
 	Int         *int
 	String      *string
 	Count       *int
 	StringSlice []string
 	IntSlice    []int
-	HasValue    *bool
+	IfExists    *bool
 	Bool        *bool
 }
 
@@ -37,14 +39,20 @@ func (f *Flag) toRule() *rule {
 		r.SetFlag(IsRequired)
 	}
 
-	if f.IsGreedy {
+	if f.CanRepeat {
 		r.SetFlag(IsGreedy)
 	}
 
+	if f.IsHelpFlag {
+		r.SetFlag(IsHelpRule)
+	}
+
 	if f.Int != nil {
+		r.SetFlag(IsExpectingValue)
 		funcs = append(funcs, toInt(f.Int))
 	}
 	if f.String != nil {
+		r.SetFlag(IsExpectingValue)
 		funcs = append(funcs, toString(f.String))
 	}
 	if f.Count != nil {
@@ -52,15 +60,18 @@ func (f *Flag) toRule() *rule {
 		funcs = append(funcs, toCount(f.Count))
 	}
 	if f.StringSlice != nil {
+		r.SetFlag(IsExpectingValue)
 		funcs = append(funcs, toStringSlice(f.StringSlice))
 	}
 	if f.IntSlice != nil {
+		r.SetFlag(IsExpectingValue)
 		funcs = append(funcs, toIntSlice(f.IntSlice))
 	}
-	if f.HasValue != nil {
-		funcs = append(funcs, hasValue(f.HasValue))
+	if f.IfExists != nil {
+		funcs = append(funcs, toExists(f.IfExists))
 	}
 	if f.Bool != nil {
+		r.SetFlag(IsExpectingValue)
 		funcs = append(funcs, toBool(f.Bool))
 	}
 
@@ -76,14 +87,14 @@ type Argument struct {
 	Default    string
 	Aliases    []string
 	IsRequired bool
-	IsGreedy   bool
+	CanRepeat  bool
 
 	Int         *int
 	String      *string
 	Count       *int
 	StringSlice []string
 	IntSlice    []int
-	HasValue    *bool
+	IfExists    *bool
 	Bool        *bool
 }
 
@@ -102,7 +113,7 @@ func (a *Argument) toRule() *rule {
 	if a.IsRequired {
 		r.SetFlag(IsRequired)
 	}
-	if a.IsGreedy {
+	if a.CanRepeat {
 		r.SetFlag(IsGreedy)
 	}
 
@@ -117,13 +128,15 @@ func (a *Argument) toRule() *rule {
 		funcs = append(funcs, toCount(a.Count))
 	}
 	if a.StringSlice != nil {
+		r.SetFlag(IsList)
 		funcs = append(funcs, toStringSlice(a.StringSlice))
 	}
 	if a.IntSlice != nil {
+		r.SetFlag(IsList)
 		funcs = append(funcs, toIntSlice(a.IntSlice))
 	}
-	if a.HasValue != nil {
-		funcs = append(funcs, hasValue(a.HasValue))
+	if a.IfExists != nil {
+		funcs = append(funcs, toExists(a.IfExists))
 	}
 	if a.Bool != nil {
 		funcs = append(funcs, toBool(a.Bool))
