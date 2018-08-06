@@ -17,16 +17,16 @@ type ruleFlag int64
 
 // TODO: Make these flags private
 const (
-	IsCommand ruleFlag = 1 << iota
-	IsArgument
-	IsRequired
-	IsFlag
-	IsGreedy
-	IsExpectingValue
-	IsCountFlag
-	IsHelpRule
-	IsList
-	IsMap
+	isCommand ruleFlag = 1 << iota
+	isArgument
+	isRequired
+	isFlag
+	canRepeat
+	isExpectingValue
+	isCountFlag
+	isHelpRule
+	isList
+	isMap
 )
 
 type rule struct {
@@ -62,13 +62,14 @@ func (r *rule) StoreValue(value interface{}, count int) error {
 			return fmt.Errorf("while storing '%s' %s", value, err)
 		}
 	}
+	return nil
 }
 
 func (r *rule) IsRequiredMessage() string {
 	switch {
-	case r.HasFlag(IsArgument):
+	case r.HasFlag(isArgument):
 		return fmt.Sprintf("argument '%s' is required", r.Name)
-	case r.HasFlag(IsFlag):
+	case r.HasFlag(isFlag):
 		return fmt.Sprintf("flag '%s' is required", r.Name)
 	}
 	return fmt.Sprintf("'%s' is required", r.Name)

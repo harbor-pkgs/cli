@@ -5,6 +5,7 @@ import (
 	"errors"
 	"fmt"
 	"os"
+	"reflect"
 	"sort"
 	"strings"
 )
@@ -14,7 +15,7 @@ const (
 	subCmdNamePrefix = "!cmd-"
 
 	// return code used when parser encounters an error
-	errorCode = 1
+	ErrorRetCode = 1
 
 	// These are the names cli uses to identify where a value came from
 	cliSource     = "cli-args"
@@ -35,6 +36,8 @@ type Parser struct {
 	ErrOnUnknownArgs bool
 	// If set to true, avoid adding a --help, -h option
 	NoHelp bool
+	// Don't display help message when ParseOrExit() encounters an error
+	NoHelpOnError bool
 	// TODO: If defined will log parse and type errors to this logger
 	Logger StdLogger
 	// Provide an error function, defaults to a function that panics
@@ -43,13 +46,17 @@ type Parser struct {
 	// The arguments we are tasked with parsing
 	argv []string
 	// The current state of the syntax we have parsed
-	syntax syntax
+	syntax *linearSyntax
 	// Sorted list of parsing rules
-	rules rules
+	rules ruleList
 	// Our parent parser if this instance is a sub-parser
 	parent *Parser
 	// A collection of stores provided by the user for retrieving values
 	stores []FromStore
+}
+
+func NewParser() *Parser {
+	return New(&Parser{})
 }
 
 func New(parent *Parser) *Parser {
@@ -62,6 +69,7 @@ func New(parent *Parser) *Parser {
 
 	SetDefault(&p.ErrorFunc, panicFunc)
 
+	// TODO: Consider removing this if we don't copy our subparsers
 	// If rules exist, assume we are a sub parser and
 	// copy all the private fields
 	if parent.rules != nil {
@@ -70,6 +78,8 @@ func New(parent *Parser) *Parser {
 		p.syntax = parent.syntax
 		p.rules = parent.rules
 		p.stores = parent.stores
+	} else {
+		p.syntax = newLinearSyntax()
 	}
 	return p
 }
@@ -90,21 +100,18 @@ func (p *Parser) ParseOrExit() {
 // TODO: Support out of band command bash completions and in-band bash completions
 // Parses command line arguments using os.Args if 'args' is nil.
 func (p *Parser) Parse(ctx context.Context, argv []string) (int, error) {
-	var err error
-
-	if argv == nil {
-		argv = os.Args
-	}
-
 	// Sanity Check
 	if len(p.rules) == 0 {
-		return errorCode, errors.New("no flags or arguments defined; call Add() before calling Parse()")
+		return ErrorRetCode, errors.New("no flags or arguments defined; call Add() before calling Parse()")
 	}
 
 	// If we are the top most parent
 	if p.parent == nil {
+		// Allowing a sub parser to change our args can cause panics when collecting values
+		SetDefault(&p.argv, argv, os.Args)
+
 		// If user requested we add a help flag, and if one is not already defined
-		if !p.NoHelp && p.rules.RuleWithFlag(IsHelpRule) == nil {
+		if !p.NoHelp && p.rules.RuleWithFlag(isHelpRule) == nil {
 			p.Add(&Flag{
 				Help:       "display this help message and exit",
 				Name:       "help",
@@ -114,17 +121,22 @@ func (p *Parser) Parse(ctx context.Context, argv []string) (int, error) {
 		}
 	}
 
-	// Check for duplicate rules, and combine any rules from parent parsers
+	var err error
+	// Combine any rules from any parent parsers and check for duplicate rules
 	if p.rules, err = p.validateRules(nil); err != nil {
-		return errorCode, err
+		fmt.Println("validate fail")
+		return ErrorRetCode, err
 	}
 
 	// Sort the rules so positional rules are evaluated last
 	sort.Sort(p.rules)
 
+	fmt.Printf("rules: %s\n", p.rules.String())
+
 	if err := p.parse(0); err != nil {
+		fmt.Println("parse fail")
 		// report flags that expect values
-		return errorCode, err
+		return ErrorRetCode, err
 	}
 
 	subCmd := p.nextSubCmd()
@@ -138,13 +150,15 @@ func (p *Parser) Parse(ctx context.Context, argv []string) (int, error) {
 	if p.ErrOnUnknownArgs {
 		args := p.UnProcessedArgs()
 		if len(args) != 0 {
-			return errorCode, fmt.Errorf("provided but not defined '%s'", args[0])
+			return ErrorRetCode, fmt.Errorf("provided but not defined '%s'", args[0])
 		}
 	}
 
+	fmt.Printf("syntax: %s\n", p.syntax.String())
 	// If they asked for help
-	if p.rules.RuleWithFlag(IsHelpRule) != nil {
-		return errorCode, &HelpError{}
+	if p.syntax.FindWithFlag(isHelpRule) != nil {
+		fmt.Printf("type %s\n", reflect.TypeOf(&HelpError{}))
+		return ErrorRetCode, &HelpError{}
 	}
 
 	// If we get here, we are at the top of the parent tree and can collect values
@@ -156,7 +170,7 @@ func (p *Parser) Parse(ctx context.Context, argv []string) (int, error) {
 	// Retrieve values from any stores provided by the user
 	for _, store := range p.stores {
 		if err := results.From(ctx, store); err != nil {
-			return errorCode, fmt.Errorf("while reading from store '%s': %s", store.Source(), err)
+			return ErrorRetCode, fmt.Errorf("while reading from store '%s': %s", store.Source(), err)
 		}
 	}
 	// Apply defaults and validate required values are provided then store values
@@ -183,7 +197,7 @@ func (p *Parser) apply(rs *resultStore) (int, error) {
 		// get the value and how many instances of it where provided via the command line
 		value, count, err := p.Get(context.Background(), rule.Name, rule.ValueType())
 		if err != nil {
-			return errorCode, err
+			return ErrorRetCode, err
 		}
 
 		// if no instances of this rule where found
@@ -193,16 +207,16 @@ func (p *Parser) apply(rs *resultStore) (int, error) {
 				rs.Set(rule.Name, defaultSource, *rule.Default, 1)
 			} else {
 				// and is required
-				if rule.HasFlag(IsRequired) {
-					return errorCode, errors.New(rule.IsRequiredMessage())
+				if rule.HasFlag(isRequired) {
+					return ErrorRetCode, errors.New(rule.IsRequiredMessage())
 				}
 			}
 		}
 
 		// if the user dis-allows the flag to be provided more than once
 		if count > 1 {
-			if rule.HasFlag(IsFlag) && !rule.HasFlag(IsGreedy) {
-				return errorCode, fmt.Errorf("unexpected duplicate flag '%s' provided", rule.Name)
+			if rule.HasFlag(isFlag) && !rule.HasFlag(canRepeat) {
+				return ErrorRetCode, fmt.Errorf("unexpected duplicate flag '%s' provided", rule.Name)
 			}
 		}
 
@@ -218,13 +232,13 @@ func (p *Parser) apply(rs *resultStore) (int, error) {
 			switch t := value.(type) {
 			case string:
 				if !ContainsString(t, rule.Choices, nil) {
-					return errorCode, fmt.Errorf("'%s' is an invalid argument for '%s' choose from (%s)",
+					return ErrorRetCode, fmt.Errorf("'%s' is an invalid argument for '%s' choose from (%s)",
 						value, rule.Name, strings.Join(rule.Choices, ", "))
 				}
 			case []string:
 				for _, i := range t {
 					if !ContainsString(i, rule.Choices, nil) {
-						return errorCode, fmt.Errorf("'%s' is an invalid argument for '%s' choose from (%s)",
+						return ErrorRetCode, fmt.Errorf("'%s' is an invalid argument for '%s' choose from (%s)",
 							value, rule.Name, strings.Join(rule.Choices, ", "))
 					}
 				}
@@ -286,7 +300,7 @@ func (p *Parser) Source() string {
 }
 
 func (p *Parser) nextSubCmd() CommandFunc {
-	cmdNodes := p.syntax.FindWithFlag(IsCommand)
+	cmdNodes := p.syntax.FindWithFlag(isCommand)
 	if cmdNodes != nil && len(cmdNodes) != 0 {
 		for _, node := range cmdNodes {
 			if !node.CmdHandled {
@@ -300,20 +314,27 @@ func (p *Parser) nextSubCmd() CommandFunc {
 
 func (p *Parser) parse(pos int) error {
 	if len(p.argv) == pos {
+		fmt.Println("no more args")
 		// No more args to parse
 		return nil
 	}
+	fmt.Printf("parse('%s')\n", p.argv[pos])
 	var skipNextPos bool
 
 	for _, rule := range p.rules {
+		fmt.Printf("Rule: %s\n", rule.Name)
 		// If this is an flag rule
-		if rule.HasFlag(IsFlag) {
+		if rule.HasFlag(isFlag) {
+			fmt.Println("isFlag")
 			var count int
 			// Match any aliases for this rule
 			for _, alias := range rule.Aliases {
-				if rule.HasFlag(IsExpectingValue) {
+				fmt.Printf("alias: %s\n", alias)
+				if rule.HasFlag(isExpectingValue) {
+					fmt.Println("isExpectingValue")
 					// If contains an '='
 					if strings.ContainsRune(p.argv[pos], '=') {
+						fmt.Println("has Equal")
 						parts := strings.Split(p.argv[0], "=")
 						count = matchesFlag(p.argv[pos], alias)
 						if count != 0 {
@@ -326,11 +347,12 @@ func (p *Parser) parse(pos int) error {
 							})
 						}
 					} else {
+						fmt.Println("no Equal")
 						count = matchesFlag(p.argv[pos], alias)
 						if count != 0 {
 							// consume the next arg for the value for this flag
 							if len(p.argv) < pos+1 {
-								return fmt.Errorf("expected '%p' to have an argument", rule.Name)
+								return fmt.Errorf("expected '%s' to have an argument", rule.Name)
 							}
 
 							p.syntax.Add(&node{
@@ -344,12 +366,13 @@ func (p *Parser) parse(pos int) error {
 						}
 					}
 				} else {
+					fmt.Println("notExpectingValue")
 					count = matchesFlag(p.argv[pos], alias)
 					if count != 0 {
+						fmt.Printf("[%s] matched: %s", p.argv[pos], rule.Name)
 						p.syntax.Add(&node{
 							Pos:     pos,
 							RawFlag: p.argv[pos],
-							Value:   &p.argv[pos+1],
 							Rule:    rule,
 							Count:   count,
 						})
@@ -362,7 +385,7 @@ func (p *Parser) parse(pos int) error {
 			}
 		}
 
-		if rule.HasFlag(IsCommand) {
+		if rule.HasFlag(isCommand) {
 			if rule.Value == p.argv[pos] {
 				p.syntax.Add(&node{
 					Pos:   pos,
@@ -374,9 +397,9 @@ func (p *Parser) parse(pos int) error {
 		}
 
 		// If this is an argument rule
-		if rule.HasFlag(IsArgument) {
+		if rule.HasFlag(isArgument) {
 			// If it's greedy
-			if rule.HasFlag(IsGreedy) {
+			if rule.HasFlag(canRepeat) {
 				p.syntax.Add(&node{
 					Pos:   pos,
 					Value: &p.argv[0],
@@ -397,7 +420,10 @@ func (p *Parser) parse(pos int) error {
 		}
 	}
 
-	// Skip the next pos because we parsed it p a flag value
+	// Move to the next argument
+	pos += 1
+
+	// Skip an additional pos because we parsed it as a flag value
 	if skipNextPos {
 		pos += 1
 	}
@@ -406,20 +432,20 @@ func (p *Parser) parse(pos int) error {
 }
 
 // Validate our current rules and any parent rules
-func (p *Parser) validateRules(rules rules) (rules, error) {
-	var validate rules
+func (p *Parser) validateRules(rules ruleList) (ruleList, error) {
+	combinedRules := p.rules
 
 	// If were passed some rules, append them
 	if rules != nil {
-		validate = append(p.rules, rules...)
+		combinedRules = append(combinedRules, rules...)
 	}
 
 	// Validate with our parents rules if exist
 	if p.parent != nil {
-		return p.parent.validateRules(validate)
+		return p.parent.validateRules(combinedRules)
 	}
 
-	return nil, validate.ValidateRules()
+	return combinedRules.ValidateRules()
 }
 
 func matchesFlag(arg, flag string) int {

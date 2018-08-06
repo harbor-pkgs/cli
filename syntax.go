@@ -1,5 +1,10 @@
 package cli
 
+import (
+	"fmt"
+	"strings"
+)
+
 type node struct {
 	Pos        int
 	RawFlag    string
@@ -10,13 +15,26 @@ type node struct {
 	CmdHandled bool
 }
 
+func (n *node) String() string {
+	if n.Rule != nil {
+		return fmt.Sprintf("node(rule: %s)", n.Rule.Name)
+	}
+	return fmt.Sprintf("node(rule: <none>)")
+}
+
 type nodes []*node
-type syntax struct {
+type linearSyntax struct {
 	nodes map[int]*node
 }
 
+func newLinearSyntax() *linearSyntax {
+	return &linearSyntax{
+		nodes: make(map[int]*node),
+	}
+}
+
 // Returns the all nodes that have the specified rule
-func (s syntax) FindRules(rule *rule) nodes {
+func (s *linearSyntax) FindRules(rule *rule) nodes {
 	var result nodes
 	for _, node := range s.nodes {
 		if node.Rule == rule {
@@ -26,7 +44,7 @@ func (s syntax) FindRules(rule *rule) nodes {
 	return result
 }
 
-func (s syntax) FindWithFlag(flag ruleFlag) nodes {
+func (s *linearSyntax) FindWithFlag(flag ruleFlag) nodes {
 	var result nodes
 	for _, node := range s.nodes {
 		if node.Rule.HasFlag(flag) {
@@ -36,11 +54,19 @@ func (s syntax) FindWithFlag(flag ruleFlag) nodes {
 	return result
 }
 
-func (s *syntax) Add(node *node) {
+func (s *linearSyntax) Add(node *node) {
 	s.nodes[node.Pos] = node
 }
 
-func (s *syntax) Contains(pos int) bool {
+func (s *linearSyntax) Contains(pos int) bool {
 	_, ok := s.nodes[pos]
 	return ok
+}
+
+func (s *linearSyntax) String() string {
+	var lines []string
+	for i, node := range s.nodes {
+		lines = append(lines, fmt.Sprintf("[%d] %s", i, node))
+	}
+	return strings.Join(lines, "\n")
 }

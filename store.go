@@ -11,7 +11,7 @@ type valueSrc struct {
 }
 
 type resultStore struct {
-	rules  rules
+	rules  ruleList
 	values map[string]valueSrc
 }
 
@@ -20,7 +20,7 @@ type FromStore interface {
 	Get(context.Context, string, ValueType) (interface{}, int, error)
 }
 
-func newResultStore(rules rules) *resultStore {
+func newResultStore(rules ruleList) *resultStore {
 	return &resultStore{
 		rules: rules,
 	}

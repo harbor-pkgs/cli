@@ -8,10 +8,10 @@ import (
 )
 
 type envStore struct {
-	rules rules
+	rules ruleList
 }
 
-func newEnvStore(rules rules) *envStore {
+func newEnvStore(rules ruleList) *envStore {
 	return &envStore{
 		rules: rules,
 	}

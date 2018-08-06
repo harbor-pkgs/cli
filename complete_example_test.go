@@ -27,7 +27,7 @@ func Example_complete() {
 	// Store Integers directly into a struct field with a default value
 	parser.Add(&cli.Flag{
 		Help:    "Set our power level to over 5000!",
-		Int:     &conf.PowerLevel,
+		Store:   &conf.PowerLevel,
 		Aliases: []string{"p"},
 		Name:    "power-level",
 		Env:     "POWER_LEVEL",
@@ -38,7 +38,7 @@ func Example_complete() {
 	parser.Add(&cli.Flag{
 		Help:    "Send a message to your enemies, make them quake in fear",
 		Default: "over-ten-thousand",
-		String:  &conf.Message,
+		Store:   &conf.Message,
 		Aliases: []string{"m"},
 		Name:    "message",
 		Env:     "MESSAGE",
@@ -46,12 +46,12 @@ func Example_complete() {
 
 	// Pass a comma separated list of strings and get a []string slice
 	parser.Add(&cli.Flag{
-		Help:        "List of weapons to choose from separated by a comma",
-		Default:     "vi,emacs,pico",
-		StringSlice: conf.Weapons,
-		Aliases:     []string{"s"},
-		Name:        "weapons",
-		Env:         "WEAPONS",
+		Help:    "List of weapons to choose from separated by a comma",
+		Default: "vi,emacs,pico",
+		Store:   conf.Weapons,
+		Aliases: []string{"s"},
+		Name:    "weapons",
+		Env:     "WEAPONS",
 	})
 
 	// Count the number of times an option is seen
@@ -80,17 +80,17 @@ func Example_complete() {
 	// Add Required arguments
 	parser.Add(&cli.Argument{
 		Help:       "The name of the hero who fights for justice",
-		String:     &conf.Name,
+		Store:      &conf.Name,
 		Name:       "name",
 		IsRequired: true,
 	})
 
-	// Add greedy optional arguments
+	// Add optional arguments that can repeat
 	parser.Add(&cli.Argument{
-		Help:        "List of villains to vanquish",
-		Name:        "the-villains",
-		StringSlice: conf.Villains,
-		CanRepeat:   true,
+		Help:      "List of villains to vanquish",
+		Name:      "the-villains",
+		Store:     conf.Villains,
+		CanRepeat: true,
 	})
 
 	// ParseOrExit() is just a convenience, you can call

@@ -4,26 +4,36 @@ import (
 	"fmt"
 	"regexp"
 	"strings"
+
+	"github.com/davecgh/go-spew/spew"
 )
 
 var regexInValidRuleName = regexp.MustCompile(`[!"#$&'/()*;<>{|}\\\\~\s]`)
 var regexHasNonWordPrefix = regexp.MustCompile(`^(\W+)([\w|-]*)$`)
 
-type rules []*rule
+type ruleList []*rule
 
-func (r rules) Len() int {
+func (r ruleList) Len() int {
 	return len(r)
 }
 
-func (r rules) Less(left, right int) bool {
+func (r ruleList) Less(left, right int) bool {
 	return r[left].Sequence < r[right].Sequence
 }
 
-func (r rules) Swap(left, right int) {
+func (r ruleList) Swap(left, right int) {
 	r[left], r[right] = r[right], r[left]
 }
 
-func (r rules) ValidateRules() error {
+func (r ruleList) String() string {
+	var lines []string
+	for i, rule := range r {
+		lines = append(lines, fmt.Sprintf("[%d] %s", i, spew.Sdump(rule)))
+	}
+	return strings.Join(lines, "\n")
+}
+
+func (r ruleList) ValidateRules() (ruleList, error) {
 	var greedyRule *rule
 	for idx, rule := range r {
 		// Duplicate rule check
@@ -32,7 +42,7 @@ func (r rules) ValidateRules() error {
 			for ; next < len(r); next++ {
 				// If the names are the same
 				if rule.Name == r[next].Name {
-					return fmt.Errorf("duplicate argument or flag '%s' defined", rule.Name)
+					return nil, fmt.Errorf("duplicate argument or flag '%s' defined", rule.Name)
 				}
 				// If the alias is a duplicate
 				for _, alias := range r[next].Aliases {
@@ -45,51 +55,51 @@ func (r rules) ValidateRules() error {
 						}
 					}
 					if len(duplicate) != 0 {
-						return fmt.Errorf("duplicate alias '%s' for '%s' redefined by '%s'",
+						return nil, fmt.Errorf("duplicate alias '%s' for '%s' redefined by '%s'",
 							duplicate, rule.Name, r[next].Name)
 					}
 				}
 				if rule.Name == r[next].Name {
-					return fmt.Errorf("duplicate argument or flag '%s' defined", rule.Name)
+					return nil, fmt.Errorf("duplicate argument or flag '%s' defined", rule.Name)
 				}
 			}
 		}
 		// TODO: rules cannot store map and slices simultaneously check for flags set and error if both exists
 
 		if rule.Name == "" {
-			return fmt.Errorf("refusing to parse %s with no name'", rule.Type())
+			return nil, fmt.Errorf("refusing to parse %s with no name'", rule.Type())
 		}
 
 		if regexHasNonWordPrefix.MatchString(rule.Name) {
-			return fmt.Errorf("'%s' is an invalid name for an '%s'", rule.Name, rule.Type())
+			return nil, fmt.Errorf("'%s' is an invalid name for an '%s'", rule.Name, rule.Type())
 		}
 
 		// Check for invalid option and argument names
 		if regexInValidRuleName.MatchString(rule.Name) {
 			if !strings.HasPrefix(rule.Name, subCmdNamePrefix) {
-				return fmt.Errorf("bad %s '%s'; contains invalid characters",
+				return nil, fmt.Errorf("bad %s '%s'; contains invalid characters",
 					rule.Type(), rule.Name)
 			}
 		}
 
-		if !rule.HasFlag(IsArgument) {
+		if !rule.HasFlag(isArgument) {
 			continue
 		}
 
 		// If we already found a greedy rule, no other argument should follow
 		if greedyRule != nil {
-			return fmt.Errorf("'%s' is ambiguous when following greedy argument '%s'",
+			return nil, fmt.Errorf("'%s' is ambiguous when following greedy argument '%s'",
 				rule.Name, greedyRule.Name)
 		}
 
 		// Check for ambiguous greedy arguments
-		if rule.HasFlag(IsGreedy) {
+		if rule.HasFlag(canRepeat) {
 			if greedyRule == nil {
 				greedyRule = rule
 			}
 		}
 	}
-	return nil
+	return r, nil
 }
 
 type ValueType string
@@ -102,9 +112,9 @@ const (
 
 func (r rule) ValueType() ValueType {
 	switch {
-	case r.HasFlag(IsList):
+	case r.HasFlag(isList):
 		return ListType
-	case r.HasFlag(IsMap):
+	case r.HasFlag(isMap):
 		return MapType
 	}
 	return StringType
@@ -112,17 +122,17 @@ func (r rule) ValueType() ValueType {
 
 func (r rule) Type() string {
 	switch {
-	case r.HasFlag(IsFlag):
+	case r.HasFlag(isFlag):
 		return "flag"
-	case r.HasFlag(IsArgument):
+	case r.HasFlag(isArgument):
 		return "argument"
-	case r.HasFlag(IsCommand):
+	case r.HasFlag(isCommand):
 		return "command"
 	}
 	return "unknown"
 }
 
-func (r rules) GetRule(name string) *rule {
+func (r ruleList) GetRule(name string) *rule {
 	for _, rule := range r {
 		if rule.Name == name {
 			return rule
@@ -131,7 +141,7 @@ func (r rules) GetRule(name string) *rule {
 	return nil
 }
 
-func (r rules) RuleWithFlag(flag ruleFlag) *rule {
+func (r ruleList) RuleWithFlag(flag ruleFlag) *rule {
 	for _, rule := range r {
 		if rule.HasFlag(flag) {
 			return rule
