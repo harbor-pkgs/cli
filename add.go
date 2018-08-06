@@ -3,6 +3,7 @@ package cli
 import (
 	"fmt"
 	"reflect"
+	"runtime"
 )
 
 type Variant interface {
@@ -38,12 +39,13 @@ func (f *Flag) toRule() (*rule, error) {
 	r := &rule{
 		Name:    f.Name,
 		HelpMsg: f.Help,
-		Aliases: f.Aliases,
+		Aliases: append(f.Aliases, f.Name),
 		EnvVar:  f.Env,
 	}
 	r.SetFlag(isFlag)
 
 	if f.Store != nil {
+		r.SetFlag(isExpectingValue)
 		fnc, err := newStoreFunc(f.Store)
 		if err != nil {
 			return nil, fmt.Errorf("invalid 'Store' while adding flag '%s': %s", f.Name, err)
@@ -63,10 +65,6 @@ func (f *Flag) toRule() (*rule, error) {
 	if f.IsHelpFlag {
 		r.SetFlag(isHelpRule)
 	}
-	if f.Int != nil {
-		r.SetFlag(isExpectingValue)
-		r.StoreFuncs = append(r.StoreFuncs, toInt(f.Int))
-	}
 	if f.Count != nil {
 		r.SetFlag(canRepeat)
 		r.StoreFuncs = append(r.StoreFuncs, toCount(f.Count))
@@ -82,7 +80,6 @@ type Argument struct {
 	Help       string
 	Env        string
 	Default    string
-	Aliases    []string
 	IsRequired bool
 	CanRepeat  bool
 
@@ -105,7 +102,6 @@ func (a *Argument) toRule() (*rule, error) {
 		Name:    a.Name,
 		HelpMsg: a.Help,
 		EnvVar:  a.Env,
-		Aliases: a.Aliases,
 	}
 
 	if a.Store != nil {
@@ -141,6 +137,7 @@ func newStoreFunc(dest interface{}) (StoreFunc, error) {
 	if d.Kind() != reflect.Ptr {
 		return nil, fmt.Errorf("cannot use non pointer type '%s'; must provide a pointer", d.Kind())
 	}
+	d = reflect.Indirect(d)
 	switch d.Kind() {
 	case reflect.Array, reflect.Slice, reflect.Map:
 		elem := reflect.TypeOf(dest).Elem()
@@ -153,6 +150,7 @@ func newStoreFunc(dest interface{}) (StoreFunc, error) {
 			return nil, fmt.Errorf("slice of type '%s' is not supported", d.Kind())
 		}
 	case reflect.String:
+		fmt.Println("isString")
 		return toString(dest.(*string)), nil
 	case reflect.Bool:
 		return toBool(dest.(*bool)), nil
@@ -185,10 +183,36 @@ func (p *Parser) Add(v Variant) {
 	// TODO: Support adding multiple variants with the same Add() call
 	rule, err := v.toRule()
 	if err != nil {
-		// TODO: Extract the line number and file name that called 'Add'
-		// TODO: Add any errors to the parser, to be reported when `Parse()` is called
+		// Extract the line number and file name that called 'Add'
+		_, file, line, _ := runtime.Caller(1)
+		// Add the error to the parser, to be reported when `Parse()` is called
+		p.errs = append(p.errs, fmt.Errorf("%s:%d - %s", file, line, err))
+		return
 	}
 
 	fmt.Println("add rule")
 	p.rules = append(p.rules, rule)
 }
+
+// Returns the file, function and line number of the function that called logrus
+/*func GetLogrusCaller() *stack.FrameInfo {
+	var frames [32]uintptr
+
+	// iterate until we find non logrus function
+	length := runtime.Callers(5, frames[:])
+	for idx := 0; idx < (length - 1); idx++ {
+		pc := uintptr(frames[idx]) - 1
+		fn := runtime.FuncForPC(pc)
+		funcName := fn.Name()
+		if strings.Contains(strings.ToLower(funcName), "sirupsen/logrus") {
+			continue
+		}
+		filePath, lineNo := fn.FileLine(pc)
+		return &stack.FrameInfo{
+			Func:   stack.FuncName(fn),
+			File:   filePath,
+			LineNo: lineNo,
+		}
+	}
+	return &stack.FrameInfo{}
+}*/

@@ -22,7 +22,8 @@ type FromStore interface {
 
 func newResultStore(rules ruleList) *resultStore {
 	return &resultStore{
-		rules: rules,
+		values: make(map[string]valueSrc),
+		rules:  rules,
 	}
 }
 

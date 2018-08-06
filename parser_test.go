@@ -47,3 +47,18 @@ func TestParserNoArgs(t *testing.T) {
 	assert.Nil(t, err)
 	assert.Equal(t, 0, retCode)
 }
+
+func TestFooFlag(t *testing.T) {
+	var foo string
+	// With default parser and foo flag
+	p := cli.NewParser()
+	p.Add(&cli.Flag{Name: "foo", Store: &foo})
+
+	// Given no arguments
+	retCode, err := p.Parse(nil, []string{"--foo", "bar"})
+
+	// Parser should return 0 and no error
+	assert.Nil(t, err)
+	assert.Equal(t, 0, retCode)
+	assert.Equal(t, "bar", foo)
+}

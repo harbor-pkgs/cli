@@ -8,6 +8,8 @@ import (
 	"reflect"
 	"sort"
 	"strings"
+
+	"github.com/davecgh/go-spew/spew"
 )
 
 const (
@@ -53,6 +55,8 @@ type Parser struct {
 	parent *Parser
 	// A collection of stores provided by the user for retrieving values
 	stores []FromStore
+	// Errors accumulated when adding flags
+	errs []error
 }
 
 func NewParser() *Parser {
@@ -100,16 +104,24 @@ func (p *Parser) ParseOrExit() {
 // TODO: Support out of band command bash completions and in-band bash completions
 // Parses command line arguments using os.Args if 'args' is nil.
 func (p *Parser) Parse(ctx context.Context, argv []string) (int, error) {
+
+	// Report Add() errors
+	if len(p.errs) != 0 {
+		return ErrorRetCode, p.errs[0]
+	}
+
 	// Sanity Check
 	if len(p.rules) == 0 {
 		return ErrorRetCode, errors.New("no flags or arguments defined; call Add() before calling Parse()")
 	}
 
+	fmt.Printf("parse()\n")
+
 	// If we are the top most parent
 	if p.parent == nil {
 		// Allowing a sub parser to change our args can cause panics when collecting values
 		SetDefault(&p.argv, argv, os.Args)
-
+		spew.Dump(p.rules)
 		// If user requested we add a help flag, and if one is not already defined
 		if !p.NoHelp && p.rules.RuleWithFlag(isHelpRule) == nil {
 			p.Add(&Flag{
