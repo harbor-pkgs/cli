@@ -105,7 +105,7 @@ func (r ruleList) ValidateRules() (ruleList, error) {
 type ValueType string
 
 const (
-	StringType ValueType = "string"
+	ScalarType ValueType = "scalar"
 	ListType   ValueType = "list"
 	MapType    ValueType = "map"
 )
@@ -117,7 +117,7 @@ func (r rule) ValueType() ValueType {
 	case r.HasFlag(isMap):
 		return MapType
 	}
-	return StringType
+	return ScalarType
 }
 
 func (r rule) Type() string {

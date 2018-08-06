@@ -46,10 +46,11 @@ func (f *Flag) toRule() (*rule, error) {
 
 	if f.Store != nil {
 		r.SetFlag(isExpectingValue)
-		fnc, err := newStoreFunc(f.Store)
+		fnc, flag, err := newStoreFunc(f.Store)
 		if err != nil {
 			return nil, fmt.Errorf("invalid 'Store' while adding flag '%s': %s", f.Name, err)
 		}
+		r.SetFlag(flag)
 		r.StoreFuncs = append(r.StoreFuncs, fnc)
 	}
 
@@ -105,10 +106,11 @@ func (a *Argument) toRule() (*rule, error) {
 	}
 
 	if a.Store != nil {
-		fnc, err := newStoreFunc(a.Store)
+		fnc, flag, err := newStoreFunc(a.Store)
 		if err != nil {
 			return nil, fmt.Errorf("invalid 'Store' while adding argument '%s': %s", a.Name, err)
 		}
+		r.SetFlag(flag)
 		r.StoreFuncs = append(r.StoreFuncs, fnc)
 	}
 	if a.Default != "" {
@@ -132,35 +134,37 @@ func (a *Argument) toRule() (*rule, error) {
 	return r, nil
 }
 
-func newStoreFunc(dest interface{}) (StoreFunc, error) {
+func newStoreFunc(dest interface{}) (StoreFunc, ruleFlag, error) {
 	d := reflect.ValueOf(dest)
 	if d.Kind() != reflect.Ptr {
-		return nil, fmt.Errorf("cannot use non pointer type '%s'; must provide a pointer", d.Kind())
+		return nil, isScalar, fmt.Errorf("cannot use non pointer type '%s'; must provide a pointer", d.Kind())
 	}
 	d = reflect.Indirect(d)
 	switch d.Kind() {
-	case reflect.Array, reflect.Slice, reflect.Map:
-		elem := reflect.TypeOf(dest).Elem()
+	case reflect.Array, reflect.Slice:
+		elem := reflect.TypeOf(dest).Elem().Elem()
 		switch elem.Kind() {
 		case reflect.Int:
-			return toIntSlice(dest.([]int)), nil
+			return toIntSlice(dest.(*[]int)), isList, nil
 		case reflect.String:
-			return toStringSlice(dest.([]string)), nil
+			return toStringSlice(dest.(*[]string)), isList, nil
 		default:
-			return nil, fmt.Errorf("slice of type '%s' is not supported", d.Kind())
+			return nil, isList, fmt.Errorf("slice of type '%s' is not supported", elem.Kind())
 		}
+	case reflect.Map:
+		// TODO: Add support for maps
 	case reflect.String:
 		fmt.Println("isString")
-		return toString(dest.(*string)), nil
+		return toString(dest.(*string)), isScalar, nil
 	case reflect.Bool:
-		return toBool(dest.(*bool)), nil
+		return toBool(dest.(*bool)), isScalar, nil
 	case reflect.Int:
-		return toInt(dest.(*int)), nil
+		return toInt(dest.(*int)), isScalar, nil
 	case reflect.Uint, reflect.Uint8, reflect.Uint16, reflect.Uint32, reflect.Uint64, reflect.Uintptr, reflect.Float32,
 		reflect.Float64, reflect.Interface, reflect.Ptr, reflect.Int8, reflect.Int16, reflect.Int32, reflect.Int64:
-		return nil, fmt.Errorf("cannot use '%s'; type not supported", d.Kind())
+		return nil, isScalar, fmt.Errorf("cannot use '%s'; type not supported", d.Kind())
 	}
-	return nil, fmt.Errorf("unhandled type '%s'", d.Kind())
+	return nil, isScalar, fmt.Errorf("unhandled type '%s'", d.Kind())
 }
 
 type Command struct {
@@ -193,26 +197,3 @@ func (p *Parser) Add(v Variant) {
 	fmt.Println("add rule")
 	p.rules = append(p.rules, rule)
 }
-
-// Returns the file, function and line number of the function that called logrus
-/*func GetLogrusCaller() *stack.FrameInfo {
-	var frames [32]uintptr
-
-	// iterate until we find non logrus function
-	length := runtime.Callers(5, frames[:])
-	for idx := 0; idx < (length - 1); idx++ {
-		pc := uintptr(frames[idx]) - 1
-		fn := runtime.FuncForPC(pc)
-		funcName := fn.Name()
-		if strings.Contains(strings.ToLower(funcName), "sirupsen/logrus") {
-			continue
-		}
-		filePath, lineNo := fn.FileLine(pc)
-		return &stack.FrameInfo{
-			Func:   stack.FuncName(fn),
-			File:   filePath,
-			LineNo: lineNo,
-		}
-	}
-	return &stack.FrameInfo{}
-}*/

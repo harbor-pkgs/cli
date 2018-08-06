@@ -27,6 +27,7 @@ const (
 	isHelpRule
 	isList
 	isMap
+	isScalar
 )
 
 type rule struct {

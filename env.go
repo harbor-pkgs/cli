@@ -37,7 +37,7 @@ func (e *envStore) Get(ctx context.Context, name string, valueType ValueType) (i
 	}
 
 	switch valueType {
-	case StringType:
+	case ScalarType:
 		return value, 1, nil
 	case ListType:
 		r := StringToSlice(value, strings.TrimSpace)

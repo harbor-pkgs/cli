@@ -13,9 +13,13 @@ type node struct {
 	Count      int
 	IsCmd      bool
 	CmdHandled bool
+	ValueFor   *node
 }
 
 func (n *node) String() string {
+	if n.ValueFor != nil {
+		return fmt.Sprintf("value(for: %d)", n.ValueFor.Pos)
+	}
 	if n.Rule != nil {
 		return fmt.Sprintf("node(rule: %s)", n.Rule.Name)
 	}
@@ -47,7 +51,7 @@ func (s *linearSyntax) FindRules(rule *rule) nodes {
 func (s *linearSyntax) FindWithFlag(flag ruleFlag) nodes {
 	var result nodes
 	for _, node := range s.nodes {
-		if node.Rule.HasFlag(flag) {
+		if node.Rule != nil && node.Rule.HasFlag(flag) {
 			result = append(result, node)
 		}
 	}
@@ -65,8 +69,8 @@ func (s *linearSyntax) Contains(pos int) bool {
 
 func (s *linearSyntax) String() string {
 	var lines []string
-	for i, node := range s.nodes {
-		lines = append(lines, fmt.Sprintf("[%d] %s", i, node))
+	for i := 0; i < len(s.nodes); i++ {
+		lines = append(lines, fmt.Sprintf("[%d] %s", i, s.nodes[i]))
 	}
 	return strings.Join(lines, "\n")
 }

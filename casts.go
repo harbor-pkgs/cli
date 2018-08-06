@@ -74,25 +74,25 @@ func toCount(ptr *int) StoreFunc {
 	}
 }
 
-func toStringSlice(ptr []string) StoreFunc {
+func toStringSlice(ptr *[]string) StoreFunc {
 	return func(value interface{}, count int) error {
 		switch t := value.(type) {
 		case string:
-			ptr = StringToSlice(t, strings.TrimSpace)
+			*ptr = StringToSlice(t, strings.TrimSpace)
 		case []string:
-			ptr = t
+			*ptr = t
 		case map[string]string:
 			var r []string
 			for k, v := range t {
 				r = append(r, fmt.Sprintf("%s=%s", k, v))
 			}
-			ptr = r
+			*ptr = r
 		}
 		return nil
 	}
 }
 
-func toIntSlice(ptr []int) StoreFunc {
+func toIntSlice(ptr *[]int) StoreFunc {
 	strListToIntList := func(slice []string) ([]int, error) {
 		var r []int
 		for _, item := range slice {
@@ -112,13 +112,13 @@ func toIntSlice(ptr []int) StoreFunc {
 			if err != nil {
 				return err
 			}
-			ptr = r
+			*ptr = r
 		case []string:
 			r, err := strListToIntList(t)
 			if err != nil {
 				return err
 			}
-			ptr = r
+			*ptr = r
 		}
 		return nil
 	}

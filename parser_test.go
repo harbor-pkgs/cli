@@ -62,3 +62,37 @@ func TestFooFlag(t *testing.T) {
 	assert.Equal(t, 0, retCode)
 	assert.Equal(t, "bar", foo)
 }
+
+func TestFlagCount(t *testing.T) {
+	var count int
+
+	// With default parser and foo flag
+	p := cli.NewParser()
+	p.Add(&cli.Flag{Name: "verbose", Count: &count, Aliases: []string{"v"}})
+
+	// Given no arguments
+	retCode, err := p.Parse(nil, []string{"--verbose", "-v"})
+
+	// Parser should return 0 and no error
+	assert.Nil(t, err)
+	assert.Equal(t, 0, retCode)
+	assert.Equal(t, 2, count)
+}
+
+func TestFlagCountWithValue(t *testing.T) {
+	var count int
+	var foo []string
+
+	// With default parser and foo flag
+	p := cli.NewParser()
+	p.Add(&cli.Flag{Name: "foo", Store: &foo, Count: &count, Aliases: []string{"f"}})
+
+	// Given no arguments
+	retCode, err := p.Parse(nil, []string{"--foo", "bar", "-f", "bang"})
+
+	// Parser should return 0 and no error
+	assert.Nil(t, err)
+	assert.Equal(t, 0, retCode)
+	assert.Equal(t, 2, count)
+	assert.Equal(t, []string{"bar", "bang"}, foo)
+}
