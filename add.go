@@ -148,7 +148,13 @@ func newStoreFunc(dest interface{}) (StoreFunc, ruleFlag, error) {
 			return nil, isList, fmt.Errorf("slice of type '%s' is not supported", elem.Kind())
 		}
 	case reflect.Map:
-		// TODO: Add support for maps
+		key := d.Type().Key()
+		elem := d.Type().Elem()
+		if key.Kind() == reflect.String && elem.Kind() == reflect.String {
+			return toStringMap(dest.(*map[string]string)), isMap, nil
+		}
+		return nil, isMap, fmt.Errorf("cannot use 'map[%s]%s'; only "+
+			"'map[string]string' supported", key.Kind(), elem.Kind())
 	case reflect.String:
 		fmt.Println("isString")
 		return toString(dest.(*string)), isScalar, nil

@@ -1,9 +1,8 @@
 package cli_test
 
 import (
-	"testing"
-
 	"sort"
+	"testing"
 
 	"github.com/harbor-pkgs/cli"
 	"github.com/stretchr/testify/assert"
@@ -159,6 +158,52 @@ func TestFlagWithSlice(t *testing.T) {
 	assert.Equal(t, 2, count)
 	sort.Strings(foo)
 	assert.Equal(t, []string{"bar,bang", "foo"}, foo)
+}
+
+func TestFlagWithMap(t *testing.T) {
+	var foo map[string]string
+	var count int
+
+	// With default parser and foo flag
+	p := cli.NewParser()
+	// Count implies 'CanRepeat=true'
+	p.Add(&cli.Flag{Name: "foo", Store: &foo, Count: &count, Aliases: []string{"f"}})
+
+	// Given
+	retCode, err := p.Parse(nil, []string{"--foo", "bar=foo", "-f", "foo=bar"})
+
+	// Parser should return 0 and no error
+	assert.Nil(t, err)
+	assert.Equal(t, 0, retCode)
+	assert.Equal(t, 2, count)
+	require.Contains(t, foo, "bar")
+	require.Contains(t, foo, "foo")
+	assert.Equal(t, foo["bar"], "foo")
+	assert.Equal(t, foo["foo"], "bar")
+}
+
+func TestFlagWithMapAndJSON(t *testing.T) {
+	var foo map[string]string
+	var count int
+
+	// With default parser and foo flag
+	p := cli.NewParser()
+	// Count implies 'CanRepeat=true'
+	p.Add(&cli.Flag{Name: "foo", Store: &foo, Count: &count, Aliases: []string{"f"}})
+
+	// Given
+	retCode, err := p.Parse(nil, []string{"--foo", `{"bar":"foo"}`, "-f", `{"foo": "bar", "bash": "bang"}`})
+
+	// Parser should return 0 and no error
+	assert.Nil(t, err)
+	assert.Equal(t, 0, retCode)
+	assert.Equal(t, 2, count)
+	require.Contains(t, foo, "bar")
+	require.Contains(t, foo, "foo")
+	require.Contains(t, foo, "bash")
+	assert.Equal(t, foo["bar"], "foo")
+	assert.Equal(t, foo["foo"], "bar")
+	assert.Equal(t, foo["bash"], "bang")
 }
 
 // TODO: Test matching flags with no prefix if enabled

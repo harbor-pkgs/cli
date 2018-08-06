@@ -236,16 +236,16 @@ func (p *Parser) Get(ctx context.Context, key string, valueType ValueType) (inte
 		for _, value := range values {
 			kv, err := StringToMap(value)
 			if err != nil {
-				return nil, 0, fmt.Errorf("during Parser.Get() map conversion error: %s", err)
+				return nil, 0, fmt.Errorf("during Parser.Get() map conversion: %s", err)
 			}
 			// Merge the key values for each of the items
 			for k, v := range kv {
 				r[k] = v
 			}
 		}
-		return r, len(r), nil
+		return r, count, nil
 	}
-	return nil, 0, fmt.Errorf("no such value type '%s'", valueType)
+	return nil, 0, fmt.Errorf("no such ValueType '%s'", valueType)
 }
 
 func (p *Parser) Source() string {

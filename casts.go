@@ -92,6 +92,22 @@ func toStringSlice(ptr *[]string) StoreFunc {
 	}
 }
 
+func toStringMap(ptr *map[string]string) StoreFunc {
+	return func(value interface{}, count int) error {
+		var err error
+		switch t := value.(type) {
+		case string:
+			*ptr, err = StringToMap(t)
+			if err != nil {
+				return err
+			}
+		case map[string]string:
+			*ptr = t
+		}
+		return nil
+	}
+}
+
 func toIntSlice(ptr *[]int) StoreFunc {
 	strListToIntList := func(slice []string) ([]int, error) {
 		var r []int
