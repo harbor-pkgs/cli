@@ -17,6 +17,8 @@ type resultStore struct {
 
 type FromStore interface {
 	Source() string
+	// Returns the value and the number of times the value was seen
+	// in the store (not a count of the values found if non scalar value)
 	Get(context.Context, string, ValueType) (interface{}, int, error)
 }
 

@@ -125,10 +125,10 @@ func (p *Parser) Parse(ctx context.Context, argv []string) (int, error) {
 		// If user requested we add a help flag, and if one is not already defined
 		if !p.NoHelp && p.rules.RuleWithFlag(isHelpRule) == nil {
 			p.Add(&Flag{
-				Help:       "display this help message and exit",
-				Name:       "help",
-				IsHelpFlag: true,
-				Aliases:    []string{"h"},
+				Help:     "display this help message and exit",
+				Name:     "help",
+				HelpFlag: true,
+				Aliases:  []string{"h"},
 			})
 		}
 	}
@@ -366,8 +366,8 @@ func (p *Parser) parse(pos int) error {
 						count = matchesFlag(p.argv[pos], alias)
 						if count != 0 {
 							// consume the next arg for the value for this flag
-							if len(p.argv) < pos+1 {
-								return fmt.Errorf("expected '%s' to have an argument", rule.Name)
+							if len(p.argv) <= pos+1 {
+								return fmt.Errorf("expected flag '%s' to have an argument", p.argv[pos])
 							}
 
 							flagNode := &node{

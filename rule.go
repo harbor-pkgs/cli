@@ -71,7 +71,7 @@ func (r *rule) IsRequiredMessage() string {
 	case r.HasFlag(isArgument):
 		return fmt.Sprintf("argument '%s' is required", r.Name)
 	case r.HasFlag(isFlag):
-		return fmt.Sprintf("flag '%s' is required", r.Name)
+		return fmt.Sprintf("flag '--%s' is required", r.Name)
 	}
 	return fmt.Sprintf("'%s' is required", r.Name)
 }

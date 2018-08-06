@@ -11,15 +11,15 @@ type Variant interface {
 }
 
 type Flag struct {
-	Name       string
-	Help       string
-	Env        string
-	Default    string
-	Aliases    []string
-	IsRequired bool
-	CanRepeat  bool
-	IsHelpFlag bool
-	DependsOn  string
+	Name      string
+	Help      string
+	Env       string
+	Default   string
+	Aliases   []string
+	Required  bool
+	CanRepeat bool
+	HelpFlag  bool
+	DependsOn string
 
 	Store       interface{}
 	Int         *int
@@ -57,13 +57,13 @@ func (f *Flag) toRule() (*rule, error) {
 	if f.Default != "" {
 		r.Default = &f.Default
 	}
-	if f.IsRequired {
+	if f.Required {
 		r.SetFlag(isRequired)
 	}
 	if f.CanRepeat {
 		r.SetFlag(canRepeat)
 	}
-	if f.IsHelpFlag {
+	if f.HelpFlag {
 		r.SetFlag(isHelpRule)
 	}
 	if f.Count != nil {
@@ -77,21 +77,17 @@ func (f *Flag) toRule() (*rule, error) {
 }
 
 type Argument struct {
-	Name       string
-	Help       string
-	Env        string
-	Default    string
-	IsRequired bool
-	CanRepeat  bool
+	Name      string
+	Help      string
+	Env       string
+	Default   string
+	Required  bool
+	CanRepeat bool
 
-	Store       interface{}
-	Int         *int
-	String      *string
-	Count       *int
-	StringSlice []string
-	IntSlice    []int
-	IfExists    *bool
-	Bool        *bool
+	Store    interface{}
+	Count    *int
+	IfExists *bool
+	Bool     *bool
 }
 
 func (a *Argument) toRule() (*rule, error) {
@@ -117,7 +113,7 @@ func (a *Argument) toRule() (*rule, error) {
 		r.Default = &a.Default
 	}
 	r.SetFlag(isArgument)
-	if a.IsRequired {
+	if a.Required {
 		r.SetFlag(isRequired)
 	}
 	if a.CanRepeat {

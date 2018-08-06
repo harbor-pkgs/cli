@@ -79,10 +79,10 @@ func Example_complete() {
 
 	// Add Required arguments
 	parser.Add(&cli.Argument{
-		Help:       "The name of the hero who fights for justice",
-		Store:      &conf.Name,
-		Name:       "name",
-		IsRequired: true,
+		Help:     "The name of the hero who fights for justice",
+		Store:    &conf.Name,
+		Name:     "name",
+		Required: true,
 	})
 
 	// Add optional arguments that can repeat
