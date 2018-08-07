@@ -28,16 +28,27 @@ func NewKVStore(r io.Reader) (FromStore, error) {
 	var count int
 	for _, line := range lines {
 		// Skip comments or malformed lines
-		if line[0] == '#' || line[0] == ' ' {
+		if len(line) == 0 || line[0] == '#' || line[0] == ' ' || line[0] == '\n' {
 			continue
 		}
 
 		// Split the line into key=value or "key"="value"
 		var inQuote bool
+		var eRune rune
 		parts := strings.FieldsFunc(line, func(c rune) bool {
 			switch {
-			case c == '"':
-				inQuote = !inQuote
+			case c == '"' || c == '\'':
+				// If we are inside a quote
+				if inQuote {
+					// And we match the same rune that began the quote
+					if c == eRune {
+						inQuote = !inQuote
+					}
+				} else {
+					// If we are outside a quote, record the start rune
+					inQuote = !inQuote
+					eRune = c
+				}
 				return false
 			case inQuote:
 				return false
@@ -59,9 +70,9 @@ func NewKVStore(r io.Reader) (FromStore, error) {
 
 		// Determine if the key has a value
 		var key, value string
-		if len(parts) > 2 {
-			key = parts[0]
-			value = parts[1]
+		if len(parts) > 1 {
+			key = strings.Trim(parts[0], `"'`)
+			value = strings.Trim(parts[1], `"'`)
 		} else {
 			key = parts[0]
 		}
