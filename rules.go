@@ -102,6 +102,33 @@ func (r ruleList) ValidateRules() (ruleList, error) {
 	return r, nil
 }
 
+func (r ruleList) GetRule(name string) *rule {
+	for _, rule := range r {
+		if rule.Name == name {
+			return rule
+		}
+	}
+	return nil
+}
+
+func (r ruleList) GetRuleIndex(name string) int {
+	for i := 0; i < len(r); i++ {
+		if r[i].Name == name {
+			return i
+		}
+	}
+	return -1
+}
+
+func (r ruleList) RuleWithFlag(flag ruleFlag) *rule {
+	for _, rule := range r {
+		if rule.HasFlag(flag) {
+			return rule
+		}
+	}
+	return nil
+}
+
 type ValueType string
 
 const (
@@ -130,22 +157,4 @@ func (r rule) Type() string {
 		return "command"
 	}
 	return "unknown"
-}
-
-func (r ruleList) GetRule(name string) *rule {
-	for _, rule := range r {
-		if rule.Name == name {
-			return rule
-		}
-	}
-	return nil
-}
-
-func (r ruleList) RuleWithFlag(flag ruleFlag) *rule {
-	for _, rule := range r {
-		if rule.HasFlag(flag) {
-			return rule
-		}
-	}
-	return nil
 }

@@ -2,6 +2,7 @@ package cli
 
 import (
 	"context"
+	"fmt"
 )
 
 type valueSrc struct {
@@ -32,6 +33,7 @@ func newResultStore(rules ruleList) *resultStore {
 func (rs *resultStore) From(ctx context.Context, from FromStore) error {
 	for _, rule := range rs.rules {
 		value, count, err := from.Get(ctx, rule.Name, rule.ValueType())
+		fmt.Printf("[%s]Get(%s, %s) - '%v' '%d'\n", from.Source(), rule.Name, rule.ValueType(), value, count)
 		if err != nil {
 			return err
 		}
@@ -46,12 +48,12 @@ func (rs *resultStore) From(ctx context.Context, from FromStore) error {
 	return nil
 }
 
-func (rs *resultStore) Get(ctx context.Context, name string, valType ValueType) (interface{}, int) {
+func (rs *resultStore) Get(ctx context.Context, name string, valType ValueType) (interface{}, int, error) {
 	value, ok := rs.values[name]
 	if ok {
-		return value.value, value.count
+		return value.value, value.count, nil
 	}
-	return "", 0
+	return "", 0, nil
 }
 
 func (rs *resultStore) Set(name, source string, value interface{}, count int) {

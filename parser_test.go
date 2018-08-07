@@ -37,9 +37,10 @@ func TestParserAddHelpWithFlag(t *testing.T) {
 }
 
 func TestParserNoArgs(t *testing.T) {
+	var foo string
 	// With default parser and foo flag
 	p := cli.NewParser()
-	p.Add(&cli.Flag{Name: "foo"})
+	p.Add(&cli.Flag{Name: "foo", Store: &foo})
 
 	// Given no arguments
 	retCode, err := p.Parse(nil, []string{})
@@ -47,6 +48,75 @@ func TestParserNoArgs(t *testing.T) {
 	// Parser should return 0 and no error
 	assert.Nil(t, err)
 	assert.Equal(t, 0, retCode)
+	assert.Equal(t, "", foo)
+}
+
+func TestFlagDefaultScalar(t *testing.T) {
+	var foo string
+	// With default parser and foo flag
+	p := cli.NewParser()
+	p.Add(&cli.Flag{Name: "foo", Store: &foo, Default: "bash"})
+
+	// Given no value
+	retCode, err := p.Parse(nil, []string{})
+
+	// Parser should return 0 and no error
+	assert.Nil(t, err)
+	assert.Equal(t, 0, retCode)
+	assert.Equal(t, "bash", foo)
+
+	// Given a value
+	retCode, err = p.Parse(nil, []string{"--foo", "bar"})
+
+	// Parser should return 0 and no error
+	assert.Nil(t, err)
+	assert.Equal(t, 0, retCode)
+	assert.Equal(t, "bar", foo)
+}
+
+func TestFlagDefaultList(t *testing.T) {
+	var foo []string
+	// With default parser and foo flag
+	p := cli.NewParser()
+	p.Add(&cli.Flag{Name: "foo", Store: &foo, Default: "bash,bar,foo"})
+
+	// Given no value
+	retCode, err := p.Parse(nil, []string{})
+
+	// Parser should return 0 and no error
+	assert.Nil(t, err)
+	assert.Equal(t, 0, retCode)
+	sort.Strings(foo)
+	assert.Equal(t, []string{"bar", "bash", "foo"}, foo)
+
+	// Given a value
+	retCode, err = p.Parse(nil, []string{"--foo", "bar"})
+
+	// Parser should return 0 and no error
+	assert.Nil(t, err)
+	assert.Equal(t, 0, retCode)
+	assert.Equal(t, []string{"bar"}, foo)
+}
+
+func TestFlagDefaultMap(t *testing.T) {
+	var foo map[string]string
+	var count int
+
+	// With default parser and foo flag
+	p := cli.NewParser()
+	p.Add(&cli.Flag{Name: "foo", Store: &foo, Default: "bar=foo,foo=bar"})
+
+	// Given
+	retCode, err := p.Parse(nil, []string{})
+
+	// Parser should return 0 and no error
+	assert.Nil(t, err)
+	assert.Equal(t, 0, retCode)
+	assert.Equal(t, 0, count)
+	require.Contains(t, foo, "bar")
+	require.Contains(t, foo, "foo")
+	assert.Equal(t, foo["bar"], "foo")
+	assert.Equal(t, foo["foo"], "bar")
 }
 
 func TestFooFlag(t *testing.T) {
@@ -206,7 +276,23 @@ func TestFlagWithMapAndJSON(t *testing.T) {
 	assert.Equal(t, foo["bash"], "bang")
 }
 
+func TestFlagReplace(t *testing.T) {
+	var count int
+	var foo []string
+
+	// With default parser and foo flag
+	p := cli.NewParser()
+	p.Add(&cli.Flag{Name: "foo", Store: &foo, Default: "bash", Count: &count, Aliases: []string{"f"}})
+
+	// Given
+	retCode, err := p.Parse(nil, []string{"--foo", "bar", "-f", "bang"})
+
+	// Parser should return 0 and no error
+	assert.Nil(t, err)
+	assert.Equal(t, 0, retCode)
+	assert.Equal(t, 2, count)
+	sort.Strings(foo)
+	assert.Equal(t, []string{"bang", "bar"}, foo)
+}
+
 // TODO: Test matching flags with no prefix if enabled
-// TODO: Test default values with all supported scalar and slice values
-// TODO: Test StringToSlice
-// TODO: Test From alternate sources

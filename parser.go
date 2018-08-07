@@ -8,8 +8,6 @@ import (
 	"reflect"
 	"sort"
 	"strings"
-
-	"github.com/davecgh/go-spew/spew"
 )
 
 const (
@@ -82,8 +80,6 @@ func New(parent *Parser) *Parser {
 		p.syntax = parent.syntax
 		p.rules = parent.rules
 		p.stores = parent.stores
-	} else {
-		p.syntax = newLinearSyntax()
 	}
 	return p
 }
@@ -104,6 +100,8 @@ func (p *Parser) ParseOrExit() {
 // TODO: Support out of band command bash completions and in-band bash completions
 // Parses command line arguments using os.Args if 'args' is nil.
 func (p *Parser) Parse(ctx context.Context, argv []string) (int, error) {
+	// Clear any previously parsed syntax
+	p.syntax = newLinearSyntax()
 
 	// Report Add() errors
 	if len(p.errs) != 0 {
@@ -120,8 +118,10 @@ func (p *Parser) Parse(ctx context.Context, argv []string) (int, error) {
 	// If we are the top most parent
 	if p.parent == nil {
 		// Allowing a sub parser to change our args can cause panics when collecting values
-		SetDefault(&p.argv, argv, os.Args)
-		spew.Dump(p.rules)
+		p.argv = os.Args
+		if argv != nil {
+			p.argv = argv
+		}
 		// If user requested we add a help flag, and if one is not already defined
 		if !p.NoHelp && p.rules.RuleWithFlag(isHelpRule) == nil {
 			p.Add(&Flag{
@@ -176,111 +176,40 @@ func (p *Parser) Parse(ctx context.Context, argv []string) (int, error) {
 	// If we get here, we are at the top of the parent tree and can collect values
 	results := newResultStore(p.rules)
 
-	results.From(ctx, p)
-	results.From(ctx, newEnvStore(p.rules))
-
 	// Retrieve values from any stores provided by the user
 	for _, store := range p.stores {
 		if err := results.From(ctx, store); err != nil {
 			return ErrorRetCode, fmt.Errorf("while reading from store '%s': %s", store.Source(), err)
 		}
 	}
+	fmt.Printf("1 results: %+v\n", results.values)
+	results.From(ctx, newEnvStore(p.rules))
+	fmt.Printf("2 results: %+v\n", results.values)
+	results.From(ctx, p)
+	fmt.Printf("3 results: %+v\n", results.values)
 	// Apply defaults and validate required values are provided then store values
 	return p.validateAndStore(results)
-}
-
-// Returns a list of all unknown arguments found on the command line if `ErrOnUnknownArgs = true`
-func (p *Parser) UnProcessedArgs() []string {
-	var r []string
-	for i, arg := range p.argv {
-		if !p.syntax.Contains(i) {
-			r = append(r, arg)
-		}
-	}
-	return r
-}
-
-// TODO: Look into removing the 'int' return value.
-func (p *Parser) Get(ctx context.Context, key string, valueType ValueType) (interface{}, int, error) {
-	fmt.Printf("Get(%s,%s)\n", key, valueType)
-	rule := p.rules.GetRule(key)
-	if rule == nil {
-		return "", 0, nil
-	}
-
-	// TODO: If user requests positional only arguments, eliminate args/flags we find that are not in our range
-
-	var values []string
-	var count int
-	// collect all the values for this rule
-	for _, node := range p.syntax.FindRules(rule) {
-		count++
-		if node.Value != nil {
-			values = append(values, *node.Value)
-		}
-	}
-
-	if len(values) == 0 {
-		return nil, count, nil
-	}
-
-	switch valueType {
-	case ScalarType:
-		return values[0], count, nil
-	case ListType:
-		return values, len(values), nil
-	case MapType:
-		// each string in the list should be a key value pair
-		// either in the form `key=value` or `{"key": "value"}`
-		r := make(map[string]string)
-		for _, value := range values {
-			kv, err := StringToMap(value)
-			if err != nil {
-				return nil, 0, fmt.Errorf("during Parser.Get() map conversion: %s", err)
-			}
-			// Merge the key values for each of the items
-			for k, v := range kv {
-				r[k] = v
-			}
-		}
-		return r, count, nil
-	}
-	return nil, 0, fmt.Errorf("no such ValueType '%s'", valueType)
-}
-
-func (p *Parser) Source() string {
-	return cliSource
-}
-
-func (p *Parser) nextSubCmd() CommandFunc {
-	cmdNodes := p.syntax.FindWithFlag(isCommand)
-	if cmdNodes != nil && len(cmdNodes) != 0 {
-		for _, node := range cmdNodes {
-			if !node.CmdHandled {
-				node.CmdHandled = true
-				return cmdNodes[0].Rule.CommandFunc
-			}
-		}
-	}
-	return nil
 }
 
 func (p *Parser) validateAndStore(rs *resultStore) (int, error) {
 	// TODO: Support option exclusion `--option1 | --option2`
 	// TODO: Support option dependency (option2 cannot be used unless option1 is also defined)
 
+	fmt.Printf("4 results: %+v\n", rs.values)
 	for _, rule := range p.rules {
 		// get the value and how many instances of it where provided via the command line
-		value, count, err := p.Get(context.Background(), rule.Name, rule.ValueType())
+		value, count, err := rs.Get(context.Background(), rule.Name, rule.ValueType())
 		if err != nil {
 			return ErrorRetCode, err
 		}
+		fmt.Printf("[validate]Get(%s,%s) - '%v' %d\n", rule.Name, rule.ValueType(), value, count)
 
 		// if no instances of this rule where found
 		if count == 0 {
 			// Set the default value if provided
 			if rule.Default != nil {
-				rs.Set(rule.Name, defaultSource, *rule.Default, 1)
+				value = *rule.Default
+				fmt.Printf("default: %+v\n", value)
 			} else {
 				// and is required
 				if rule.HasFlag(isRequired) {
@@ -294,13 +223,6 @@ func (p *Parser) validateAndStore(rs *resultStore) (int, error) {
 			if rule.HasFlag(isFlag) && !rule.HasFlag(canRepeat) {
 				return ErrorRetCode, fmt.Errorf("unexpected duplicate flag '%s' provided", rule.Name)
 			}
-		}
-
-		// If has no value
-		if value == nil {
-			// TODO: Check for IsCount and ExpectValue and return error
-			// Use the count as the value
-			value = fmt.Sprintf("%d", count)
 		}
 
 		// ensure the value matches one of our choices
@@ -321,10 +243,93 @@ func (p *Parser) validateAndStore(rs *resultStore) (int, error) {
 			}
 		}
 
-		fmt.Printf("Store(%s,%d)\n", value, count)
+		fmt.Printf("Store(%v,%d)\n", value, count)
 		rule.StoreValue(value, count)
 	}
 	return 0, nil
+}
+
+func (p *Parser) AddStore(store FromStore) {
+	p.stores = append(p.stores, store)
+}
+
+// Returns a list of all unknown arguments found on the command line if `ErrOnUnknownArgs = true`
+func (p *Parser) UnProcessedArgs() []string {
+	var r []string
+	for i, arg := range p.argv {
+		if !p.syntax.Contains(i) {
+			r = append(r, arg)
+		}
+	}
+	return r
+}
+
+func (p *Parser) Get(ctx context.Context, key string, valueType ValueType) (interface{}, int, error) {
+	//fmt.Printf("Get(%s,%s)\n", key, valueType)
+	rule := p.rules.GetRule(key)
+	if rule == nil {
+		return "", 0, nil
+	}
+
+	// TODO: If user requests positional only arguments, eliminate args/flags we find that are not in our range
+
+	var values []string
+	var count int
+	// collect all the values for this rule
+	for _, node := range p.syntax.FindRules(rule) {
+		count++
+		if node.Value != nil {
+			values = append(values, *node.Value)
+		}
+	}
+
+	if len(values) == 0 {
+		//fmt.Printf("Get Ret: <nil>, %d\n", count)
+		return nil, count, nil
+	}
+
+	switch valueType {
+	case ScalarType:
+		//fmt.Printf("Get Ret: %s, %d\n", values[0], count)
+		return values[0], count, nil
+	case ListType:
+		//fmt.Printf("Get Ret: %s, %d\n", values, count)
+		return values, len(values), nil
+	case MapType:
+		// each string in the list should be a key value pair
+		// either in the form `key=value` or `{"key": "value"}`
+		r := make(map[string]string)
+		for _, value := range values {
+			kv, err := StringToMap(value)
+			if err != nil {
+				return nil, 0, fmt.Errorf("during Parser.Get() map conversion: %s", err)
+			}
+			// Merge the key values for each of the items
+			for k, v := range kv {
+				r[k] = v
+			}
+		}
+		//fmt.Printf("Get Ret: %s, %d\n", r, count)
+		return r, count, nil
+	}
+	return nil, 0, fmt.Errorf("no such ValueType '%s'", valueType)
+}
+
+func (p *Parser) Source() string {
+	return cliSource
+}
+
+func (p *Parser) nextSubCmd() CommandFunc {
+	cmdNodes := p.syntax.FindWithFlag(isCommand)
+	if cmdNodes != nil && len(cmdNodes) != 0 {
+		for _, node := range cmdNodes {
+			if !node.CmdHandled {
+				node.CmdHandled = true
+				return cmdNodes[0].Rule.CommandFunc
+			}
+		}
+	}
+	return nil
 }
 
 func (p *Parser) parse(pos int) error {

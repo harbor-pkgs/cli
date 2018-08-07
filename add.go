@@ -7,6 +7,7 @@ import (
 )
 
 type Variant interface {
+	name() string
 	toRule() (*rule, error)
 }
 
@@ -29,6 +30,10 @@ type Flag struct {
 	IntSlice    []int
 	IfExists    *bool
 	Bool        *bool
+}
+
+func (f *Flag) name() string {
+	return f.Name
 }
 
 func (f *Flag) toRule() (*rule, error) {
@@ -88,6 +93,10 @@ type Argument struct {
 	Count    *int
 	IfExists *bool
 	Bool     *bool
+}
+
+func (a *Argument) name() string {
+	return a.Name
 }
 
 func (a *Argument) toRule() (*rule, error) {
@@ -185,17 +194,43 @@ func (a *Command) toRule() *rule {
 	return r
 }
 
-func (p *Parser) Add(v Variant) {
-	// TODO: Support adding multiple variants with the same Add() call
-	rule, err := v.toRule()
-	if err != nil {
-		// Extract the line number and file name that called 'Add'
-		_, file, line, _ := runtime.Caller(1)
-		// Add the error to the parser, to be reported when `Parse()` is called
-		p.errs = append(p.errs, fmt.Errorf("%s:%d - %s", file, line, err))
-		return
-	}
+func (p *Parser) Add(variants ...Variant) {
+	for _, v := range variants {
+		rule, err := v.toRule()
+		if err != nil {
+			// Extract the line number and file name that called 'Add'
+			_, file, line, _ := runtime.Caller(1)
+			// Add the error to the parser, to be reported when `Parse()` is called
+			p.errs = append(p.errs, fmt.Errorf("%s:%d - %s", file, line, err))
+			return
+		}
 
-	fmt.Println("add rule")
-	p.rules = append(p.rules, rule)
+		fmt.Println("add rule")
+		p.rules = append(p.rules, rule)
+	}
+}
+
+func (p *Parser) Replace(variants ...Variant) error {
+	for _, v := range variants {
+		idx := p.rules.GetRuleIndex(v.name())
+		if idx == -1 {
+			return fmt.Errorf("unable to replace rule; no such rule '%s' found", v.name())
+		}
+		// Remove the rule and clear any syntax that might have been parsed
+		p.rules = append(p.rules[:idx], p.rules[idx+1:]...)
+		p.syntax = newLinearSyntax()
+
+		// Add the new rule
+		rule, err := v.toRule()
+		if err != nil {
+			// Extract the line number and file name that called 'Add'
+			_, file, line, _ := runtime.Caller(1)
+			// Add the error to the parser, to be reported when `Parse()` is called
+			p.errs = append(p.errs, fmt.Errorf("%s:%d - %s", file, line, err))
+			return nil
+		}
+		fmt.Println("replace rule")
+		p.rules = append(p.rules, rule)
+	}
+	return nil
 }

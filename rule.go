@@ -23,7 +23,7 @@ const (
 	isFlag
 	canRepeat
 	isExpectingValue
-	isCountFlag
+	hasCount
 	isHelpRule
 	isList
 	isMap

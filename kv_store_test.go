@@ -17,6 +17,7 @@ foo=bar
 "foo"="bang"
 'foo'=bash
 foo
+bar=foo
 `
 var mapFile = `
 # a comment
@@ -82,4 +83,31 @@ func TestReadMapValuesJSON(t *testing.T) {
 	assert.Equal(t, values["bash"], "bang")
 	assert.Equal(t, values["bar"], "foo")
 	assert.Equal(t, values["alan"], "alan")
+}
+
+func TestFromStore(t *testing.T) {
+	var foo, bar string
+	var count int
+
+	p := cli.NewParser()
+	p.Add(&cli.Flag{Name: "foo", Count: &count, Store: &foo})
+	p.Add(&cli.Flag{Name: "bar", Count: &count, Store: &bar})
+
+	kv, err := cli.NewKVStore(bytes.NewReader([]byte(scalarFile)))
+	require.Nil(t, err)
+	p.AddStore(kv)
+
+	// Given no value
+	retCode, err := p.Parse(nil, []string{"--foo", "thingy"})
+
+	// Should prefer the argument provided on the
+	// command line over the value from the store
+	assert.Nil(t, err)
+	assert.Equal(t, 0, retCode)
+	assert.Equal(t, "thingy", foo)
+
+	// But still provide values not specified on the command line
+	assert.Nil(t, err)
+	assert.Equal(t, 0, retCode)
+	assert.Equal(t, "foo", bar)
 }
