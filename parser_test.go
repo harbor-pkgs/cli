@@ -18,14 +18,13 @@ func TestParserNoRules(t *testing.T) {
 }
 
 func TestParserAddHelpWithFlag(t *testing.T) {
-	// With default parser and 'foo' flag
 	p := cli.NewParser()
 	p.Add(&cli.Flag{Name: "foo"})
 
 	// Given -h
 	retCode, err := p.Parse(nil, []string{"-h"})
 
-	// Parser should return HelpError{}
+	// Then should return HelpError{}
 	require.NotNil(t, err)
 	assert.Equal(t, "user asked for help; inspect this error with cli.isHelpError()", err.Error())
 
@@ -38,14 +37,13 @@ func TestParserAddHelpWithFlag(t *testing.T) {
 
 func TestParserNoArgs(t *testing.T) {
 	var foo string
-	// With default parser and foo flag
 	p := cli.NewParser()
 	p.Add(&cli.Flag{Name: "foo", Store: &foo})
 
 	// Given no arguments
 	retCode, err := p.Parse(nil, []string{})
 
-	// Parser should return 0 and no error
+	// Then
 	assert.Nil(t, err)
 	assert.Equal(t, 0, retCode)
 	assert.Equal(t, "", foo)
@@ -53,14 +51,13 @@ func TestParserNoArgs(t *testing.T) {
 
 func TestFlagDefaultScalar(t *testing.T) {
 	var foo string
-	// With default parser and foo flag
 	p := cli.NewParser()
 	p.Add(&cli.Flag{Name: "foo", Store: &foo, Default: "bash"})
 
 	// Given no value
 	retCode, err := p.Parse(nil, []string{})
 
-	// Parser should return 0 and no error
+	// Then
 	assert.Nil(t, err)
 	assert.Equal(t, 0, retCode)
 	assert.Equal(t, "bash", foo)
@@ -68,7 +65,7 @@ func TestFlagDefaultScalar(t *testing.T) {
 	// Given a value
 	retCode, err = p.Parse(nil, []string{"--foo", "bar"})
 
-	// Parser should return 0 and no error
+	// Then
 	assert.Nil(t, err)
 	assert.Equal(t, 0, retCode)
 	assert.Equal(t, "bar", foo)
@@ -76,14 +73,13 @@ func TestFlagDefaultScalar(t *testing.T) {
 
 func TestFlagDefaultList(t *testing.T) {
 	var foo []string
-	// With default parser and foo flag
 	p := cli.NewParser()
 	p.Add(&cli.Flag{Name: "foo", Store: &foo, Default: "bash,bar,foo"})
 
 	// Given no value
 	retCode, err := p.Parse(nil, []string{})
 
-	// Parser should return 0 and no error
+	// Then
 	assert.Nil(t, err)
 	assert.Equal(t, 0, retCode)
 	sort.Strings(foo)
@@ -92,7 +88,7 @@ func TestFlagDefaultList(t *testing.T) {
 	// Given a value
 	retCode, err = p.Parse(nil, []string{"--foo", "bar"})
 
-	// Parser should return 0 and no error
+	// Then
 	assert.Nil(t, err)
 	assert.Equal(t, 0, retCode)
 	assert.Equal(t, []string{"bar"}, foo)
@@ -102,14 +98,13 @@ func TestFlagDefaultMap(t *testing.T) {
 	var foo map[string]string
 	var count int
 
-	// With default parser and foo flag
 	p := cli.NewParser()
 	p.Add(&cli.Flag{Name: "foo", Store: &foo, Default: "bar=foo,foo=bar"})
 
 	// Given
 	retCode, err := p.Parse(nil, []string{})
 
-	// Parser should return 0 and no error
+	// Then
 	assert.Nil(t, err)
 	assert.Equal(t, 0, retCode)
 	assert.Equal(t, 0, count)
@@ -121,14 +116,13 @@ func TestFlagDefaultMap(t *testing.T) {
 
 func TestFooFlag(t *testing.T) {
 	var foo string
-	// With default parser and foo flag
 	p := cli.NewParser()
 	p.Add(&cli.Flag{Name: "foo", Store: &foo})
 
 	// Given double prefix
 	retCode, err := p.Parse(nil, []string{"--foo", "bar"})
 
-	// Parser should return 0 and no error
+	// Then
 	assert.Nil(t, err)
 	assert.Equal(t, 0, retCode)
 	assert.Equal(t, "bar", foo)
@@ -136,7 +130,7 @@ func TestFooFlag(t *testing.T) {
 	// Given single prefix
 	retCode, err = p.Parse(nil, []string{"-foo", "bar"})
 
-	// Parser should return 0 and no error
+	// Then
 	assert.Nil(t, err)
 	assert.Equal(t, 0, retCode)
 	assert.Equal(t, "bar", foo)
@@ -144,14 +138,13 @@ func TestFooFlag(t *testing.T) {
 
 func TestFlagExpectedValue(t *testing.T) {
 	var foo string
-	// With default parser and foo flag
 	p := cli.NewParser()
 	p.Add(&cli.Flag{Name: "foo", Store: &foo})
 
-	// Given no value
+	// Given
 	retCode, err := p.Parse(nil, []string{"--foo"})
 
-	// Parser should return 0 and no error
+	// Then
 	assert.NotNil(t, err)
 	assert.Equal(t, cli.ErrorRetCode, retCode)
 	assert.Equal(t, "expected flag '--foo' to have an argument", err.Error())
@@ -161,14 +154,13 @@ func TestFlagExpectedValue(t *testing.T) {
 func TestFlagCount(t *testing.T) {
 	var count int
 
-	// With default parser and foo flag
 	p := cli.NewParser()
 	p.Add(&cli.Flag{Name: "verbose", Count: &count, Aliases: []string{"v"}})
 
 	// Given
 	retCode, err := p.Parse(nil, []string{"--verbose", "-v"})
 
-	// Parser should return 0 and no error
+	// Then
 	assert.Nil(t, err)
 	assert.Equal(t, 0, retCode)
 	assert.Equal(t, 2, count)
@@ -178,14 +170,13 @@ func TestFlagCountWithValue(t *testing.T) {
 	var count int
 	var foo []string
 
-	// With default parser and foo flag
 	p := cli.NewParser()
 	p.Add(&cli.Flag{Name: "foo", Store: &foo, Count: &count, Aliases: []string{"f"}})
 
 	// Given
 	retCode, err := p.Parse(nil, []string{"--foo", "bar", "-f", "bang"})
 
-	// Parser should return 0 and no error
+	// Then
 	assert.Nil(t, err)
 	assert.Equal(t, 0, retCode)
 	assert.Equal(t, 2, count)
@@ -196,7 +187,6 @@ func TestFlagCountWithValue(t *testing.T) {
 func TestFlagIsRequired(t *testing.T) {
 	var foo, bar string
 
-	// With default parser and foo flag
 	p := cli.NewParser()
 	p.Add(&cli.Flag{Name: "foo", Required: true, Store: &foo, Aliases: []string{"f"}})
 	p.Add(&cli.Flag{Name: "bar", Store: &bar, Aliases: []string{"b"}})
@@ -204,7 +194,7 @@ func TestFlagIsRequired(t *testing.T) {
 	// Given
 	retCode, err := p.Parse(nil, []string{"-b", "bar"})
 
-	// Parser should return error
+	// Then
 	assert.NotNil(t, err)
 	assert.Equal(t, cli.ErrorRetCode, retCode)
 	assert.Equal(t, "flag '--foo' is required", err.Error())
@@ -214,7 +204,6 @@ func TestFlagWithSlice(t *testing.T) {
 	var foo []string
 	var count int
 
-	// With default parser and foo flag
 	p := cli.NewParser()
 	// Count implies 'CanRepeat=true'
 	p.Add(&cli.Flag{Name: "foo", Store: &foo, Count: &count, Aliases: []string{"f"}})
@@ -222,7 +211,7 @@ func TestFlagWithSlice(t *testing.T) {
 	// Given
 	retCode, err := p.Parse(nil, []string{"--foo", "bar,bang", "-f", "foo"})
 
-	// Parser should return 0 and no error
+	// Then
 	assert.Nil(t, err)
 	assert.Equal(t, 0, retCode)
 	assert.Equal(t, 2, count)
@@ -234,7 +223,6 @@ func TestFlagWithMap(t *testing.T) {
 	var foo map[string]string
 	var count int
 
-	// With default parser and foo flag
 	p := cli.NewParser()
 	// Count implies 'CanRepeat=true'
 	p.Add(&cli.Flag{Name: "foo", Store: &foo, Count: &count, Aliases: []string{"f"}})
@@ -242,7 +230,7 @@ func TestFlagWithMap(t *testing.T) {
 	// Given
 	retCode, err := p.Parse(nil, []string{"--foo", "bar=foo", "-f", "foo=bar"})
 
-	// Parser should return 0 and no error
+	// Then
 	assert.Nil(t, err)
 	assert.Equal(t, 0, retCode)
 	assert.Equal(t, 2, count)
@@ -256,7 +244,6 @@ func TestFlagWithMapAndJSON(t *testing.T) {
 	var foo map[string]string
 	var count int
 
-	// With default parser and foo flag
 	p := cli.NewParser()
 	// Count implies 'CanRepeat=true'
 	p.Add(&cli.Flag{Name: "foo", Store: &foo, Count: &count, Aliases: []string{"f"}})
@@ -264,7 +251,7 @@ func TestFlagWithMapAndJSON(t *testing.T) {
 	// Given
 	retCode, err := p.Parse(nil, []string{"--foo", `{"bar":"foo"}`, "-f", `{"foo": "bar", "bash": "bang"}`})
 
-	// Parser should return 0 and no error
+	// Then
 	assert.Nil(t, err)
 	assert.Equal(t, 0, retCode)
 	assert.Equal(t, 2, count)
@@ -280,14 +267,13 @@ func TestFlagReplace(t *testing.T) {
 	var count int
 	var foo []string
 
-	// With default parser and foo flag
 	p := cli.NewParser()
 	p.Add(&cli.Flag{Name: "foo", Store: &foo, Default: "bash", Count: &count, Aliases: []string{"f"}})
 
 	// Given
 	retCode, err := p.Parse(nil, []string{"--foo", "bar", "-f", "bang"})
 
-	// Parser should return 0 and no error
+	// Then
 	assert.Nil(t, err)
 	assert.Equal(t, 0, retCode)
 	assert.Equal(t, 2, count)
@@ -296,3 +282,60 @@ func TestFlagReplace(t *testing.T) {
 }
 
 // TODO: Test matching flags with no prefix if enabled
+
+func TestBarArgument(t *testing.T) {
+	var bar string
+
+	p := cli.NewParser()
+	p.Add(&cli.Argument{Name: "bar", Store: &bar})
+
+	// Given
+	retCode, err := p.Parse(nil, []string{"bar-thing"})
+
+	// Then
+	assert.Nil(t, err)
+	assert.Equal(t, 0, retCode)
+	assert.Equal(t, "bar-thing", bar)
+}
+
+func TestBarFooArguments(t *testing.T) {
+	var bar string
+	var foo string
+
+	p := cli.NewParser()
+	p.Add(&cli.Argument{Name: "bar", Store: &bar})
+	p.Add(&cli.Argument{Name: "foo", Store: &foo})
+
+	// Given
+	retCode, err := p.Parse(nil, []string{"bar-thing", "foo-thing"})
+
+	// Then
+	assert.Nil(t, err)
+	assert.Equal(t, 0, retCode)
+	assert.Equal(t, "bar-thing", bar)
+	assert.Equal(t, "foo-thing", foo)
+}
+
+func TestArgumentAndFlags(t *testing.T) {
+	var bar string
+	var foo string
+	var flag string
+
+	p := cli.NewParser()
+	p.Add(&cli.Flag{Name: "flag", Store: &flag})
+	p.Add(&cli.Argument{Name: "bar", Store: &bar})
+	p.Add(&cli.Argument{Name: "foo", Store: &foo})
+
+	// Given
+	retCode, err := p.Parse(nil, []string{"bar-thing", "--flag", "flag-thing", "foo-thing"})
+
+	// Then
+	assert.Nil(t, err)
+	assert.Equal(t, 0, retCode)
+	assert.Equal(t, "bar-thing", bar)
+	assert.Equal(t, "foo-thing", foo)
+	assert.Equal(t, "flag-thing", flag)
+}
+
+// TODO: Test interspersed arguments <arg0> <arg1> <cmd> <arg0>
+// TODO: Test CanRepeat post and prefix  cp <src> <src> <dst>

@@ -55,6 +55,9 @@ type Parser struct {
 	stores []FromStore
 	// Errors accumulated when adding flags
 	errs []error
+	// Each new argument is assigned a sequence depending on when they were added. This
+	// allows us to infer which position the argument should be expected when parsing the command line
+	seqCount int
 }
 
 func NewParser() *Parser {
@@ -67,6 +70,7 @@ func New(parent *Parser) *Parser {
 		EnvPrefix:        parent.EnvPrefix,
 		ErrOnUnknownArgs: parent.ErrOnUnknownArgs,
 		ErrorFunc:        parent.ErrorFunc,
+		seqCount:         1,
 	}
 
 	SetDefault(&p.ErrorFunc, panicFunc)
@@ -80,6 +84,7 @@ func New(parent *Parser) *Parser {
 		p.syntax = parent.syntax
 		p.rules = parent.rules
 		p.stores = parent.stores
+		p.seqCount = parent.seqCount
 	}
 	return p
 }
@@ -140,7 +145,7 @@ func (p *Parser) Parse(ctx context.Context, argv []string) (int, error) {
 		return ErrorRetCode, err
 	}
 
-	// Sort the rules so positional rules are evaluated last
+	// Sort the rules so argument/command rules are evaluated last
 	sort.Sort(p.rules)
 
 	fmt.Printf("rules: %s\n", p.rules.String())
@@ -338,7 +343,7 @@ func (p *Parser) parse(pos int) error {
 		// No more args to parse
 		return nil
 	}
-	fmt.Printf("parse('%s')\n", p.argv[pos])
+	fmt.Printf("argv[%d] ='%s'\n", pos, p.argv[pos])
 	var skipNextPos bool
 
 	for _, rule := range p.rules {
@@ -349,15 +354,16 @@ func (p *Parser) parse(pos int) error {
 			var count int
 			// Match any aliases for this rule
 			for _, alias := range rule.Aliases {
-				fmt.Printf("alias: %s\n", alias)
+				//fmt.Printf("alias: %s\n", alias)
 				if rule.HasFlag(isExpectingValue) {
-					fmt.Println("isExpectingValue")
+					//fmt.Println("isExpectingValue")
 					// If contains an '='
 					if strings.ContainsRune(p.argv[pos], '=') {
-						fmt.Println("has Equal")
+						//fmt.Println("has Equal")
 						parts := strings.Split(p.argv[0], "=")
 						count = matchesFlag(p.argv[pos], alias)
 						if count != 0 {
+							fmt.Printf("'%s' matched rule '%s'\n", p.argv[pos], rule.Name)
 							p.syntax.Add(&node{
 								Pos:     pos,
 								Value:   &parts[1],
@@ -367,9 +373,10 @@ func (p *Parser) parse(pos int) error {
 							})
 						}
 					} else {
-						fmt.Println("no Equal")
+						//fmt.Println("no Equal")
 						count = matchesFlag(p.argv[pos], alias)
 						if count != 0 {
+							fmt.Printf("'%s' matched rule '%s'\n", p.argv[pos], rule.Name)
 							// consume the next arg for the value for this flag
 							if len(p.argv) <= pos+1 {
 								return fmt.Errorf("expected flag '%s' to have an argument", p.argv[pos])
@@ -391,10 +398,9 @@ func (p *Parser) parse(pos int) error {
 						}
 					}
 				} else {
-					fmt.Println("notExpectingValue")
 					count = matchesFlag(p.argv[pos], alias)
 					if count != 0 {
-						fmt.Printf("[%s] matched: %s", p.argv[pos], rule.Name)
+						fmt.Printf("'%s' matched rule '%s'\n", p.argv[pos], rule.Name)
 						p.syntax.Add(&node{
 							Pos:     pos,
 							RawFlag: p.argv[pos],
@@ -406,6 +412,7 @@ func (p *Parser) parse(pos int) error {
 			}
 			// We matched a flag, move to the next arg position
 			if count != 0 {
+				fmt.Println("break")
 				break
 			}
 		}
@@ -414,7 +421,7 @@ func (p *Parser) parse(pos int) error {
 			if rule.Value == p.argv[pos] {
 				p.syntax.Add(&node{
 					Pos:   pos,
-					Value: &p.argv[0],
+					Value: &p.argv[pos],
 					Rule:  rule,
 					IsCmd: true,
 				})
@@ -427,7 +434,7 @@ func (p *Parser) parse(pos int) error {
 			if rule.HasFlag(canRepeat) {
 				p.syntax.Add(&node{
 					Pos:   pos,
-					Value: &p.argv[0],
+					Value: &p.argv[pos],
 					Rule:  rule,
 				})
 				break
@@ -437,7 +444,7 @@ func (p *Parser) parse(pos int) error {
 			if p.syntax.FindRules(rule) == nil {
 				p.syntax.Add(&node{
 					Pos:   pos,
-					Value: &p.argv[0],
+					Value: &p.argv[pos],
 					Rule:  rule,
 				})
 				break

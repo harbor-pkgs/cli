@@ -165,7 +165,6 @@ func newStoreFunc(dest interface{}) (StoreFunc, ruleFlag, error) {
 		return nil, isMap, fmt.Errorf("cannot use 'map[%s]%s'; only "+
 			"'map[string]string' supported", key.Kind(), elem.Kind())
 	case reflect.String:
-		fmt.Println("isString")
 		return toString(dest.(*string)), isScalar, nil
 	case reflect.Bool:
 		return toBool(dest.(*bool)), isScalar, nil
@@ -205,7 +204,13 @@ func (p *Parser) Add(variants ...Variant) {
 			return
 		}
 
-		fmt.Println("add rule")
+		// Only arguments and commands get sequences
+		if !rule.HasFlag(isFlag) {
+			rule.Sequence = p.seqCount
+			p.seqCount++
+		}
+
+		fmt.Printf("Add(%s)\n", rule.Name)
 		p.rules = append(p.rules, rule)
 	}
 }
@@ -214,12 +219,8 @@ func (p *Parser) Replace(variants ...Variant) error {
 	for _, v := range variants {
 		idx := p.rules.GetRuleIndex(v.name())
 		if idx == -1 {
-			return fmt.Errorf("unable to replace rule; no such rule '%s' found", v.name())
+			return fmt.Errorf("unable to replace '%s'; not found", v.name())
 		}
-		// Remove the rule and clear any syntax that might have been parsed
-		p.rules = append(p.rules[:idx], p.rules[idx+1:]...)
-		p.syntax = newLinearSyntax()
-
 		// Add the new rule
 		rule, err := v.toRule()
 		if err != nil {
@@ -229,8 +230,14 @@ func (p *Parser) Replace(variants ...Variant) error {
 			p.errs = append(p.errs, fmt.Errorf("%s:%d - %s", file, line, err))
 			return nil
 		}
-		fmt.Println("replace rule")
-		p.rules = append(p.rules, rule)
+		fmt.Printf("Replace(%s)\n", rule.Name)
+
+		// Preserve the sequence and replace the rule
+		rule.Sequence = p.rules[idx].Sequence
+		p.rules[idx] = rule
+
+		// Any previously parsed syntax is invalid
+		p.syntax = newLinearSyntax()
 	}
 	return nil
 }
