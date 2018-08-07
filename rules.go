@@ -64,14 +64,13 @@ func (r ruleList) ValidateRules() (ruleList, error) {
 				}
 			}
 		}
-		// TODO: rules cannot store map and slices simultaneously check for flags set and error if both exists
 
 		if rule.Name == "" {
 			return nil, fmt.Errorf("refusing to parse %s with no name'", rule.Type())
 		}
 
 		if regexHasNonWordPrefix.MatchString(rule.Name) {
-			return nil, fmt.Errorf("'%s' is an invalid name for an '%s'", rule.Name, rule.Type())
+			return nil, fmt.Errorf("'%s' is an invalid name for a '%s'", rule.Name, rule.Type())
 		}
 
 		// Check for invalid option and argument names

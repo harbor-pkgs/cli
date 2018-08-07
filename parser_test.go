@@ -299,8 +299,7 @@ func TestBarArgument(t *testing.T) {
 }
 
 func TestBarFooArguments(t *testing.T) {
-	var bar string
-	var foo string
+	var bar, foo string
 
 	p := cli.NewParser()
 	p.Add(&cli.Argument{Name: "bar", Store: &bar})
@@ -314,12 +313,19 @@ func TestBarFooArguments(t *testing.T) {
 	assert.Equal(t, 0, retCode)
 	assert.Equal(t, "bar-thing", bar)
 	assert.Equal(t, "foo-thing", foo)
+
+	// Given
+	retCode, err = p.Parse(nil, []string{})
+
+	// Then
+	assert.Nil(t, err)
+	assert.Equal(t, 0, retCode)
+	assert.Equal(t, "", bar)
+	assert.Equal(t, "", foo)
 }
 
 func TestArgumentAndFlags(t *testing.T) {
-	var bar string
-	var foo string
-	var flag string
+	var bar, foo, flag string
 
 	p := cli.NewParser()
 	p.Add(&cli.Flag{Name: "flag", Store: &flag})
@@ -337,5 +343,61 @@ func TestArgumentAndFlags(t *testing.T) {
 	assert.Equal(t, "flag-thing", flag)
 }
 
+func TestRuleNameCollision(t *testing.T) {
+	var bar, foo, flag string
+	p := cli.NewParser()
+
+	// Given
+	p.Add(&cli.Flag{Name: "bar", Store: &flag})
+	p.Add(&cli.Argument{Name: "bar", Store: &bar})
+	p.Add(&cli.Argument{Name: "foo", Store: &foo})
+	retCode, err := p.Parse(nil, []string{})
+
+	// Then
+	require.NotNil(t, err)
+	assert.Equal(t, cli.ErrorRetCode, retCode)
+	assert.Equal(t, "duplicate argument or flag 'bar' defined", err.Error())
+}
+
+func TestArgumentIsRequired(t *testing.T) {
+	var foo, bar string
+
+	p := cli.NewParser()
+	p.Add(&cli.Argument{Name: "foo", Required: true, Store: &foo})
+	p.Add(&cli.Argument{Name: "bar", Store: &bar, Default: "foo"})
+
+	// Given
+	retCode, err := p.Parse(nil, []string{})
+
+	// Then
+	assert.NotNil(t, err)
+	assert.Equal(t, cli.ErrorRetCode, retCode)
+	assert.Equal(t, "argument 'foo' is required", err.Error())
+
+	// Given
+	retCode, err = p.Parse(nil, []string{"bar"})
+
+	// Then
+	assert.Nil(t, err)
+	assert.Equal(t, foo, "bar")
+	assert.Equal(t, bar, "foo")
+}
+
+func TestInvalidRuleNames(t *testing.T) {
+	var foo, flag string
+	p := cli.NewParser()
+
+	// Given
+	p.Add(&cli.Flag{Name: "*bar", Store: &flag})
+	p.Add(&cli.Argument{Name: "foo", Store: &foo})
+	retCode, err := p.Parse(nil, []string{})
+
+	// Then
+	require.NotNil(t, err)
+	assert.Equal(t, cli.ErrorRetCode, retCode)
+	assert.Equal(t, "'*bar' is an invalid name for a 'flag'", err.Error())
+}
+
 // TODO: Test interspersed arguments <arg0> <arg1> <cmd> <arg0>
+// TODO: Test CanRepeat arguments
 // TODO: Test CanRepeat post and prefix  cp <src> <src> <dst>
