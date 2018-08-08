@@ -138,8 +138,8 @@ func ExampleWordWrap() {
 	fmt.Println(msg)
 	// Output:
 	// No code is the best way to write secure and reliable applications.Write
-	//    nothing; deploy nowhere. This is just an example application, but imagine
-	//    it doing anything you want.
+	//    nothing; deploy nowhere. This is just an example application, but imagine it
+	//    doing anything you want.
 }
 
 func ExampleStringToSlice() {

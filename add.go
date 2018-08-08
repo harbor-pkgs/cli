@@ -21,6 +21,7 @@ type Flag struct {
 	CanRepeat bool
 	HelpFlag  bool
 	DependsOn string
+	Hidden    bool
 
 	Store       interface{}
 	Int         *int
@@ -61,6 +62,9 @@ func (f *Flag) toRule() (*rule, error) {
 
 	if f.Default != "" {
 		r.Default = &f.Default
+	}
+	if f.Hidden {
+		r.SetFlag(isHidden)
 	}
 	if f.Required {
 		r.SetFlag(isRequired)

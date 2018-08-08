@@ -5,6 +5,7 @@ import (
 	"errors"
 	"fmt"
 	"os"
+	"path"
 	"reflect"
 	"sort"
 	"strings"
@@ -24,14 +25,19 @@ const (
 )
 
 type Parser struct {
-	// The length of lines used to word wrap the description
+	// Max length of each line of the generated help message
 	WordWrap int
+	// Custom usage provided by the user
+	Usage string
 	// Prefix applied to all to rules that match environment variables
 	EnvPrefix string
 	// A description of the application
 	Desc string
+	// If provided, will display the provided text at the bottom of the generated help message
+	Epilog string
 	// The name of the application
 	Name string
+
 	// If set to true, un-matched arguments on the command line result in parse errors
 	ErrOnUnknownArgs bool
 	// If set to true, avoid adding a --help, -h option
@@ -42,6 +48,8 @@ type Parser struct {
 	Logger StdLogger
 	// Provide an error function, defaults to a function that panics
 	ErrorFunc ErrorFunc
+	// TODO: Support combined flag parsing (-s -o can be expressed as -so)
+	AllowCombinedFlags bool
 
 	// The arguments we are tasked with parsing
 	argv []string
@@ -70,10 +78,15 @@ func New(parent *Parser) *Parser {
 		EnvPrefix:        parent.EnvPrefix,
 		ErrOnUnknownArgs: parent.ErrOnUnknownArgs,
 		ErrorFunc:        parent.ErrorFunc,
+		Name:             parent.Name,
+		Desc:             parent.Desc,
+		Epilog:           parent.Epilog,
 		seqCount:         1,
 	}
 
 	SetDefault(&p.ErrorFunc, panicFunc)
+	SetDefault(&p.WordWrap, 100)
+	SetDefault(&p.Name, path.Base(os.Args[0]))
 
 	// TODO: Consider removing this if we don't copy our subparsers
 	// If rules exist, assume we are a sub parser and
@@ -147,6 +160,12 @@ func (p *Parser) Parse(ctx context.Context, argv []string) (int, error) {
 
 	// Sort the rules so argument/command rules are evaluated last
 	sort.Sort(p.rules)
+
+	// Sort the aliases such that we evaluate longer alias names first
+	for _, r := range p.rules {
+		// TODO: Sort by length first, then alpha
+		sort.Sort(sort.Reverse(sort.StringSlice(r.Aliases)))
+	}
 
 	fmt.Printf("rules: %s\n", p.rules.String())
 

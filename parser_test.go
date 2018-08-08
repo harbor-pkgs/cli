@@ -4,6 +4,10 @@ import (
 	"sort"
 	"testing"
 
+	"fmt"
+
+	"strings"
+
 	"github.com/harbor-pkgs/cli"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
@@ -395,9 +399,76 @@ func TestInvalidRuleNames(t *testing.T) {
 	// Then
 	require.NotNil(t, err)
 	assert.Equal(t, cli.ErrorRetCode, retCode)
-	assert.Equal(t, "'*bar' is an invalid name for a 'flag'", err.Error())
+	assert.Equal(t, "'*bar' is an invalid name for flag; prefixes on names are not allowed", err.Error())
+}
+
+func TestInvalidAliases(t *testing.T) {
+	var foo, flag string
+	p := cli.NewParser()
+
+	// Given
+	p.Add(&cli.Flag{Name: "bar", Aliases: []string{"-b"}, Store: &flag})
+	p.Add(&cli.Argument{Name: "foo", Store: &foo})
+	retCode, err := p.Parse(nil, []string{})
+
+	// Then
+	require.NotNil(t, err)
+	assert.Equal(t, cli.ErrorRetCode, retCode)
+	assert.Equal(t, "'-b' is an invalid alias for flag; prefixes on aliases are not allowed", err.Error())
 }
 
 // TODO: Test interspersed arguments <arg0> <arg1> <cmd> <arg0>
 // TODO: Test CanRepeat arguments
 // TODO: Test CanRepeat post and prefix  cp <src> <src> <dst>
+
+func TestHelpMessage(t *testing.T) {
+	var bar, foo, argOne, argTwo string
+	var hasFlag bool
+
+	p := cli.New(&cli.Parser{
+		Name:   "test",
+		Desc:   "This is the description of the application",
+		Epilog: "Copyright 2018 By Derrick J. Wippler",
+	})
+	p.Add(&cli.Argument{Name: "arg-one", Required: true, Store: &argOne, Help: "this is a required argument"})
+	p.Add(&cli.Argument{Name: "arg-two", Store: &argTwo, Help: "this argument is optional"})
+
+	p.Add(&cli.Flag{Name: "flag", IfExists: &hasFlag, Help: "this is my flag"})
+	p.Add(&cli.Flag{Name: "foo", Store: &foo, Aliases: []string{"f"}, Help: "used to store bars"})
+	p.Add(&cli.Flag{Name: "bar", Store: &bar, Help: "used to store foos"})
+
+	// Given
+	retCode, err := p.Parse(nil, []string{"-h"})
+
+	// Then
+	require.NotNil(t, err)
+	require.Equal(t, cli.ErrorRetCode, retCode)
+	require.Equal(t, true, cli.IsHelpError(err))
+
+	help := p.GenerateHelp()
+	fmt.Println(help)
+
+	lines := strings.Split(help, "\n")
+	var i int
+
+	compare := func(expected string) {
+		require.Equal(t, expected, lines[i])
+		i++
+	}
+
+	compare("Usage: test [flags]  <arg-one> [arg-two]")
+	compare("")
+	compare("This is the description of the application")
+	compare("")
+	compare("Arguments:")
+	compare("  arg-one   this is a required argument")
+	compare("  arg-two   this argument is optional")
+	compare("")
+	compare("Flags:")
+	compare("  -flag               this is my flag")
+	compare("  -foo, -f <string>   used to store bars")
+	compare("  -bar <string>       used to store foos")
+	compare("  -help, -h           display this help message and exit")
+	compare("")
+	compare("Copyright 2018 By Derrick J. Wippler")
+}

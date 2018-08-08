@@ -132,60 +132,73 @@ func Dedent(input string) string {
 }
 
 // Exactly like `Dedent()` but trims trailing `cutset` characters
-func DedentTrim(input string, cutset string) string {
+func DedentTrim(cutset, input string) string {
 	return strings.Trim(Dedent(input), cutset)
 }
 
-// Formats the text `msg` into the form of a paragraph, wrapping the text to the
-// character `length` specified. Indenting the second line `indent` number of spaces
-func WordWrap(msg string, indent int, length int) string {
+// Formats the text `msg` wrapping the text to the character `length` specified.
+// Indenting the following lines `indent` number of spaces
+func WordWrap(msg string, indent int, wordWrap int) string {
 	// Remove any previous formatting
 	regex, _ := regexp.Compile(" {2,}|\n|\t")
 	msg = regex.ReplaceAllString(msg, "")
 
-	wordWrapLen := length - indent
-	if wordWrapLen <= 0 {
-		panic(fmt.Sprintf("Flag indent spacing '%d' exceeds wordwrap length '%d'\n", indent, length))
+	if (wordWrap - indent) <= 0 {
+		panic(fmt.Sprintf("indent spacing '%d' exceeds wordwrap length '%d'\n", indent, wordWrap))
 	}
 
-	if len(msg) < wordWrapLen {
+	if len(msg) < wordWrap {
 		return msg
 	}
 
-	// Split the msg into lines
-	var lines []string
-	var eol int
-	for i := 0; i < len(msg); {
-		eol = i + wordWrapLen
-		// If the End Of Line exceeds the message length + our peek at the next character
-		if (eol + 1) >= len(msg) {
-			// Slice until the end of the message
-			lines = append(lines, msg[i:len(msg)])
-			i = len(msg)
-			break
+	// Return a string made of 'count' number of spaces.
+	indentWord := func(count int) string {
+		if count != 0 {
+			var b strings.Builder
+			for i := 1; i < count; i++ {
+				b.WriteRune(' ')
+			}
+			return b.String()
 		}
-		// Slice this portion of the message into a single line
-		line := msg[i:eol]
-		// If the next character past eol is not a space
-		// (Usually means we are in the middle of a word)
-		if msg[eol+1] != ' ' {
-			// Find the last space before the word wrap
-			idx := strings.LastIndex(line, " ")
-			eol = i + idx
+		return ""
+	}(indent)
+
+	remaining := wordWrap
+	var words []string
+	for _, word := range strings.Fields(msg) {
+		if len(word)+1 > remaining {
+			words = append(words, "\n"+indentWord, word)
+			remaining = wordWrap - (len(word) + indent)
+		} else {
+			words = append(words, word)
+			remaining = remaining - (len(word) + 1)
 		}
-		lines = append(lines, msg[i:eol])
-		i = eol
 	}
-	var spacer string
-	if indent <= 0 {
-		spacer = fmt.Sprintf("\n%%s")
-	} else {
-		spacer = fmt.Sprintf("\n%%-%ds", indent-1)
+	return joinWords(words, " ")
+}
+
+// Join words with a separator only if the string doesn't begin with a new line
+// This avoids creating wrapped lines with hanging spaces at the end
+func joinWords(a []string, sep string) string {
+	n := len(sep) * (len(a) - 1)
+	for i := 0; i < len(a); i++ {
+		n += len(a[i])
 	}
 
-	//fmt.Print("fmt: %s\n", spacer)
-	seperator := fmt.Sprintf(spacer, "")
-	return strings.Join(lines, seperator)
+	var c int
+	b := make([]byte, n)
+	bp := copy(b, a[0])
+	c += len(a[0])
+	for _, s := range a[1:] {
+		// Do not insert a separator if the next word starts with \n
+		if !strings.HasPrefix(s, "\n") {
+			bp += copy(b[bp:], sep)
+			c += len(sep)
+		}
+		bp += copy(b[bp:], s)
+		c += len(s)
+	}
+	return string(b[:c])
 }
 
 // Returns true if the file has ModeCharDevice set. This is useful when determining if

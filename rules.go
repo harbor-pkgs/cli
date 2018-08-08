@@ -70,7 +70,15 @@ func (r ruleList) ValidateRules() (ruleList, error) {
 		}
 
 		if regexHasNonWordPrefix.MatchString(rule.Name) {
-			return nil, fmt.Errorf("'%s' is an invalid name for a '%s'", rule.Name, rule.Type())
+			return nil, fmt.Errorf("'%s' is an invalid name for %s; prefixes on names are not allowed",
+				rule.Name, rule.Type())
+		}
+
+		for _, alias := range rule.Aliases {
+			if regexHasNonWordPrefix.MatchString(alias) {
+				return nil, fmt.Errorf("'%s' is an invalid alias for %s;"+
+					" prefixes on aliases are not allowed", alias, rule.Type())
+			}
 		}
 
 		// Check for invalid option and argument names
