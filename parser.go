@@ -49,7 +49,13 @@ type Parser struct {
 	// Provide an error function, defaults to a function that panics
 	ErrorFunc ErrorFunc
 	// TODO: Support combined flag parsing (-s -o can be expressed as -so)
+	// Allow combined flags implies 'ErrOnUnknownArgs'
 	AllowCombinedFlags bool
+	// TODO: Support values that directly follow a flag ( '-f value' can be expressed as '-fvalue' )
+	AllowCombinedValues bool
+	// TODO: Support flags without a prefix IE `ps aux`
+	// Allow UnPrefixedFlags implies 'AllowCombinedFlags'
+	AllowUnPrefixedFlags bool
 
 	// The arguments we are tasked with parsing
 	argv []string

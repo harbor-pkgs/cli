@@ -151,19 +151,9 @@ func WordWrap(msg string, indent int, wordWrap int) string {
 		return msg
 	}
 
-	// Return a string made of 'count' number of spaces.
-	indentWord := func(count int) string {
-		if count != 0 {
-			var b strings.Builder
-			for i := 1; i < count; i++ {
-				b.WriteRune(' ')
-			}
-			return b.String()
-		}
-		return ""
-	}(indent)
-
+	indentWord := strings.Repeat(" ", indent)
 	remaining := wordWrap
+
 	var words []string
 	for _, word := range strings.Fields(msg) {
 		if len(word)+1 > remaining {
@@ -204,7 +194,8 @@ func joinWords(a []string, sep string) string {
 // Returns true if the file has ModeCharDevice set. This is useful when determining if
 // a CLI is receiving piped data.
 //
-//   var contents string
+//   var contents []byte
+//   var inputFile string
 //   var err error
 //
 //   // If stdin is getting piped data, read from stdin
@@ -212,7 +203,7 @@ func joinWords(a []string, sep string) string {
 //       contents, err = ioutil.ReadAll(os.Stdin)
 //   } else {
 //       // load from file given instead
-//       contents, err = args.LoadFile(opts.String("input-file"))
+//       contents, err = ioutil.ReadFile(inputFile)
 //   }
 func IsCharDevice(file *os.File) bool {
 	stat, err := file.Stat()
@@ -240,12 +231,12 @@ func jsonToMap(value string) (map[string]string, error) {
 //		Foo string
 //		Bar int
 //	}
-// 	cli.SetDefault(&config.Foo, "default")
-// 	cli.SetDefault(&config.Bar, 200)
+// 	args.SetDefault(&config.Foo, "default")
+// 	args.SetDefault(&config.Bar, 200)
 //
 // Supply additional default values and SetDefault will
 // choose the first default that is not of zero value
-//  cli.SetDefault(&config.Foo, os.Getenv("FOO"), "default")
+//  args.SetDefault(&config.Foo, os.Getenv("FOO"), "default")
 func SetDefault(dest interface{}, defaultValue ...interface{}) {
 	d := reflect.ValueOf(dest)
 	if d.Kind() != reflect.Ptr {
@@ -266,14 +257,14 @@ func SetDefault(dest interface{}, defaultValue ...interface{}) {
 
 // Returns true if 'value' is zero (the default golang value)
 //	var thingy string
-// 	holster.IsZero(thingy) == true
+// 	args.IsZero(thingy) == true
 func IsZero(value interface{}) bool {
 	return IsZeroValue(reflect.ValueOf(value))
 }
 
 // Returns true if 'value' is zero (the default golang value)
 //	var count int64
-// 	holster.IsZeroValue(reflect.ValueOf(count)) == true
+// 	args.IsZeroValue(reflect.ValueOf(count)) == true
 func IsZeroValue(value reflect.Value) bool {
 	switch value.Kind() {
 	case reflect.Array, reflect.String:
@@ -290,24 +281,4 @@ func IsZeroValue(value reflect.Value) bool {
 		return value.IsNil()
 	}
 	return false
-}
-
-// Returns true if the error was because help flag was found during parsing
-func IsHelpError(err error) bool {
-	obj, ok := err.(isHelpError)
-	return ok && obj.IsHelpError()
-}
-
-type isHelpError interface {
-	IsHelpError() bool
-}
-
-type HelpError struct{}
-
-func (e *HelpError) Error() string {
-	return "user asked for help; inspect this error with cli.isHelpError()"
-}
-
-func (e *HelpError) IsHelpError() bool {
-	return true
 }
