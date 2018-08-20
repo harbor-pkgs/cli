@@ -89,7 +89,7 @@ func TestFromStore(t *testing.T) {
 	var foo, bar string
 	var count int
 
-	p := cli.NewParser()
+	p := cli.New(nil)
 	p.Add(&cli.Flag{Name: "foo", Count: &count, Store: &foo})
 	p.Add(&cli.Flag{Name: "bar", Count: &count, Store: &bar})
 

@@ -109,6 +109,25 @@ func (r ruleList) ValidateRules() (ruleList, error) {
 	return r, nil
 }
 
+func (r ruleList) GetRuleByAlias(alias string) *rule {
+	for _, rule := range r {
+		for _, i := range rule.Aliases {
+			if i == alias {
+				return rule
+			}
+		}
+	}
+	return nil
+}
+
+func (r ruleList) GetAliases() []string {
+	var results []string
+	for _, rule := range r {
+		results = append(results, rule.Aliases...)
+	}
+	return results
+}
+
 func (r ruleList) GetRule(name string) *rule {
 	for _, rule := range r {
 		if rule.Name == name {

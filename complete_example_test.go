@@ -19,7 +19,7 @@ type Config struct {
 func Example_complete() {
 	var conf Config
 
-	parser := cli.New(&cli.Parser{
+	parser := cli.New(&cli.Config{
 		Desc: "This is a demo app to showcase some features of cli",
 		Name: "demo",
 	})

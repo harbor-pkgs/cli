@@ -48,35 +48,29 @@ func (f *Flag) toRule() (*rule, error) {
 		Aliases: append(f.Aliases, f.Name),
 		EnvVar:  f.Env,
 	}
-	r.SetFlag(isFlag)
 
 	if f.Store != nil {
-		r.SetFlag(isExpectingValue)
+		r.SetFlag(isExpectingValue, true)
 		fnc, flag, err := newStoreFunc(f.Store)
 		if err != nil {
 			return nil, fmt.Errorf("invalid 'Store' while adding flag '%s': %s", f.Name, err)
 		}
-		r.SetFlag(flag)
+		r.SetFlag(flag, true)
 		r.StoreFuncs = append(r.StoreFuncs, fnc)
 	}
 
 	if f.Default != "" {
 		r.Default = &f.Default
 	}
-	if f.Hidden {
-		r.SetFlag(isHidden)
-	}
-	if f.Required {
-		r.SetFlag(isRequired)
-	}
-	if f.CanRepeat {
-		r.SetFlag(canRepeat)
-	}
-	if f.HelpFlag {
-		r.SetFlag(isHelpRule)
-	}
+
+	r.SetFlag(isFlag, true)
+	r.SetFlag(isHidden, f.Hidden)
+	r.SetFlag(isRequired, f.Required)
+	r.SetFlag(canRepeat, f.CanRepeat)
+	r.SetFlag(isHelpRule, f.HelpFlag)
+
 	if f.Count != nil {
-		r.SetFlag(canRepeat)
+		r.SetFlag(canRepeat, true)
 		r.StoreFuncs = append(r.StoreFuncs, toCount(f.Count))
 	}
 	if f.IfExists != nil {
@@ -119,21 +113,19 @@ func (a *Argument) toRule() (*rule, error) {
 		if err != nil {
 			return nil, fmt.Errorf("invalid 'Store' while adding argument '%s': %s", a.Name, err)
 		}
-		r.SetFlag(flag)
+		r.SetFlag(flag, true)
 		r.StoreFuncs = append(r.StoreFuncs, fnc)
 	}
+
 	if a.Default != "" {
 		r.Default = &a.Default
 	}
-	r.SetFlag(isArgument)
-	if a.Required {
-		r.SetFlag(isRequired)
-	}
-	if a.CanRepeat {
-		r.SetFlag(canRepeat)
-	}
+	r.SetFlag(isArgument, true)
+	r.SetFlag(isRequired, a.Required)
+	r.SetFlag(canRepeat, a.CanRepeat)
+
 	if a.Count != nil {
-		r.SetFlag(canRepeat)
+		r.SetFlag(canRepeat, true)
 		r.StoreFuncs = append(r.StoreFuncs, toCount(a.Count))
 	}
 	if a.IfExists != nil {
@@ -193,7 +185,7 @@ func (a *Command) toRule() *rule {
 		HelpMsg:     a.Help,
 		CommandFunc: a.Func,
 	}
-	r.SetFlag(isCommand)
+	r.SetFlag(isCommand, true)
 	return r
 }
 
@@ -240,8 +232,8 @@ func (p *Parser) Replace(variants ...Variant) error {
 		rule.Sequence = p.rules[idx].Sequence
 		p.rules[idx] = rule
 
-		// Any previously parsed syntax is invalid
-		p.syntax = newLinearSyntax()
+		// Any previously parsed syntax is now invalid
+		p.syntax = nil
 	}
 	return nil
 }

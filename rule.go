@@ -50,13 +50,13 @@ func (r *rule) HasFlag(flag ruleFlag) bool {
 	return r.flags&flag != 0
 }
 
-func (r *rule) SetFlag(flag ruleFlag) {
-	r.flags = r.flags | flag
-}
-
-func (r *rule) ClearFlag(flag ruleFlag) {
-	mask := r.flags ^ flag
-	r.flags &= mask
+func (r *rule) SetFlag(flag ruleFlag, set bool) {
+	if set {
+		r.flags = r.flags | flag
+	} else {
+		mask := r.flags ^ flag
+		r.flags &= mask
+	}
 }
 
 func (r *rule) StoreValue(value interface{}, count int) error {

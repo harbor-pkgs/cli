@@ -1,12 +1,10 @@
 package cli_test
 
 import (
-	"sort"
-	"testing"
-
 	"fmt"
-
+	"sort"
 	"strings"
+	"testing"
 
 	"github.com/harbor-pkgs/cli"
 	"github.com/stretchr/testify/assert"
@@ -14,7 +12,7 @@ import (
 )
 
 func TestParserNoRules(t *testing.T) {
-	p := cli.New(&cli.Parser{NoHelp: true})
+	p := cli.New(&cli.Config{Mode: cli.NoHelp})
 	retCode, err := p.Parse(nil, nil)
 	assert.NotNil(t, err)
 	assert.Equal(t, cli.ErrorRetCode, retCode)
@@ -22,7 +20,7 @@ func TestParserNoRules(t *testing.T) {
 }
 
 func TestParserAddHelpWithFlag(t *testing.T) {
-	p := cli.NewParser()
+	p := cli.New(nil)
 	p.Add(&cli.Flag{Name: "foo"})
 
 	// Given -h
@@ -41,7 +39,7 @@ func TestParserAddHelpWithFlag(t *testing.T) {
 
 func TestParserNoArgs(t *testing.T) {
 	var foo string
-	p := cli.NewParser()
+	p := cli.New(nil)
 	p.Add(&cli.Flag{Name: "foo", Store: &foo})
 
 	// Given no arguments
@@ -55,7 +53,7 @@ func TestParserNoArgs(t *testing.T) {
 
 func TestFlagDefaultScalar(t *testing.T) {
 	var foo string
-	p := cli.NewParser()
+	p := cli.New(nil)
 	p.Add(&cli.Flag{Name: "foo", Store: &foo, Default: "bash"})
 
 	// Given no value
@@ -77,7 +75,7 @@ func TestFlagDefaultScalar(t *testing.T) {
 
 func TestFlagDefaultList(t *testing.T) {
 	var foo []string
-	p := cli.NewParser()
+	p := cli.New(nil)
 	p.Add(&cli.Flag{Name: "foo", Store: &foo, Default: "bash,bar,foo"})
 
 	// Given no value
@@ -102,7 +100,7 @@ func TestFlagDefaultMap(t *testing.T) {
 	var foo map[string]string
 	var count int
 
-	p := cli.NewParser()
+	p := cli.New(nil)
 	p.Add(&cli.Flag{Name: "foo", Store: &foo, Default: "bar=foo,foo=bar"})
 
 	// Given
@@ -120,7 +118,7 @@ func TestFlagDefaultMap(t *testing.T) {
 
 func TestFooFlag(t *testing.T) {
 	var foo string
-	p := cli.NewParser()
+	p := cli.New(nil)
 	p.Add(&cli.Flag{Name: "foo", Store: &foo})
 
 	// Given double prefix
@@ -142,7 +140,7 @@ func TestFooFlag(t *testing.T) {
 
 func TestFlagExpectedValue(t *testing.T) {
 	var foo string
-	p := cli.NewParser()
+	p := cli.New(nil)
 	p.Add(&cli.Flag{Name: "foo", Store: &foo})
 
 	// Given
@@ -158,7 +156,7 @@ func TestFlagExpectedValue(t *testing.T) {
 func TestFlagCount(t *testing.T) {
 	var count int
 
-	p := cli.NewParser()
+	p := cli.New(nil)
 	p.Add(&cli.Flag{Name: "verbose", Count: &count, Aliases: []string{"v"}})
 
 	// Given
@@ -174,7 +172,7 @@ func TestFlagCountWithValue(t *testing.T) {
 	var count int
 	var foo []string
 
-	p := cli.NewParser()
+	p := cli.New(nil)
 	p.Add(&cli.Flag{Name: "foo", Store: &foo, Count: &count, Aliases: []string{"f"}})
 
 	// Given
@@ -191,7 +189,7 @@ func TestFlagCountWithValue(t *testing.T) {
 func TestFlagIsRequired(t *testing.T) {
 	var foo, bar string
 
-	p := cli.NewParser()
+	p := cli.New(nil)
 	p.Add(&cli.Flag{Name: "foo", Required: true, Store: &foo, Aliases: []string{"f"}})
 	p.Add(&cli.Flag{Name: "bar", Store: &bar, Aliases: []string{"b"}})
 
@@ -208,7 +206,7 @@ func TestFlagWithSlice(t *testing.T) {
 	var foo []string
 	var count int
 
-	p := cli.NewParser()
+	p := cli.New(nil)
 	// Count implies 'CanRepeat=true'
 	p.Add(&cli.Flag{Name: "foo", Store: &foo, Count: &count, Aliases: []string{"f"}})
 
@@ -227,7 +225,7 @@ func TestFlagWithMap(t *testing.T) {
 	var foo map[string]string
 	var count int
 
-	p := cli.NewParser()
+	p := cli.New(nil)
 	// Count implies 'CanRepeat=true'
 	p.Add(&cli.Flag{Name: "foo", Store: &foo, Count: &count, Aliases: []string{"f"}})
 
@@ -248,7 +246,7 @@ func TestFlagWithMapAndJSON(t *testing.T) {
 	var foo map[string]string
 	var count int
 
-	p := cli.NewParser()
+	p := cli.New(nil)
 	// Count implies 'CanRepeat=true'
 	p.Add(&cli.Flag{Name: "foo", Store: &foo, Count: &count, Aliases: []string{"f"}})
 
@@ -271,7 +269,7 @@ func TestFlagReplace(t *testing.T) {
 	var count int
 	var foo []string
 
-	p := cli.NewParser()
+	p := cli.New(nil)
 	p.Add(&cli.Flag{Name: "foo", Store: &foo, Default: "bash", Count: &count, Aliases: []string{"f"}})
 
 	// Given
@@ -290,7 +288,7 @@ func TestFlagReplace(t *testing.T) {
 func TestBarArgument(t *testing.T) {
 	var bar string
 
-	p := cli.NewParser()
+	p := cli.New(nil)
 	p.Add(&cli.Argument{Name: "bar", Store: &bar})
 
 	// Given
@@ -305,7 +303,7 @@ func TestBarArgument(t *testing.T) {
 func TestBarFooArguments(t *testing.T) {
 	var bar, foo string
 
-	p := cli.NewParser()
+	p := cli.New(nil)
 	p.Add(&cli.Argument{Name: "bar", Store: &bar})
 	p.Add(&cli.Argument{Name: "foo", Store: &foo})
 
@@ -331,7 +329,7 @@ func TestBarFooArguments(t *testing.T) {
 func TestArgumentAndFlags(t *testing.T) {
 	var bar, foo, flag string
 
-	p := cli.NewParser()
+	p := cli.New(nil)
 	p.Add(&cli.Flag{Name: "flag", Store: &flag})
 	p.Add(&cli.Argument{Name: "bar", Store: &bar})
 	p.Add(&cli.Argument{Name: "foo", Store: &foo})
@@ -349,7 +347,7 @@ func TestArgumentAndFlags(t *testing.T) {
 
 func TestRuleNameCollision(t *testing.T) {
 	var bar, foo, flag string
-	p := cli.NewParser()
+	p := cli.New(nil)
 
 	// Given
 	p.Add(&cli.Flag{Name: "bar", Store: &flag})
@@ -366,7 +364,7 @@ func TestRuleNameCollision(t *testing.T) {
 func TestArgumentIsRequired(t *testing.T) {
 	var foo, bar string
 
-	p := cli.NewParser()
+	p := cli.New(nil)
 	p.Add(&cli.Argument{Name: "foo", Required: true, Store: &foo})
 	p.Add(&cli.Argument{Name: "bar", Store: &bar, Default: "foo"})
 
@@ -389,7 +387,7 @@ func TestArgumentIsRequired(t *testing.T) {
 
 func TestInvalidRuleNames(t *testing.T) {
 	var foo, flag string
-	p := cli.NewParser()
+	p := cli.New(nil)
 
 	// Given
 	p.Add(&cli.Flag{Name: "*bar", Store: &flag})
@@ -404,7 +402,7 @@ func TestInvalidRuleNames(t *testing.T) {
 
 func TestInvalidAliases(t *testing.T) {
 	var foo, flag string
-	p := cli.NewParser()
+	p := cli.New(nil)
 
 	// Given
 	p.Add(&cli.Flag{Name: "bar", Aliases: []string{"-b"}, Store: &flag})
@@ -420,12 +418,14 @@ func TestInvalidAliases(t *testing.T) {
 // TODO: Test interspersed arguments <arg0> <arg1> <cmd> <arg0>
 // TODO: Test CanRepeat arguments
 // TODO: Test CanRepeat post and prefix  cp <src> <src> <dst>
+// TODO: sub command usage should include <command> in usage line
+// TODO: Test for flags that start with or contain a number -v3  -2Knds
 
 func TestHelpMessage(t *testing.T) {
 	var bar, foo, argOne, argTwo string
 	var hasFlag bool
 
-	p := cli.New(&cli.Parser{
+	p := cli.New(&cli.Config{
 		Name:   "test",
 		Desc:   "This is the description of the application",
 		Epilog: "Copyright 2018 By Derrick J. Wippler",

@@ -7,17 +7,17 @@ import (
 
 func (p *Parser) GenerateHelp() string {
 	var result bytes.Buffer
-	if p.Usage != "" {
-		result.WriteString(fmt.Sprintf("Usage: %s\n", p.Usage))
+	if p.cfg.Usage != "" {
+		result.WriteString(fmt.Sprintf("Usage: %s\n", p.cfg.Usage))
 	} else {
-		result.WriteString(fmt.Sprintf("Usage: %s %s %s\n", p.Name,
+		result.WriteString(fmt.Sprintf("Usage: %s %s %s\n", p.cfg.Name,
 			p.generateUsage(isFlag),
 			p.generateUsage(isArgument)))
 	}
 
-	if p.Desc != "" {
+	if p.cfg.Desc != "" {
 		result.WriteString("\n")
-		result.WriteString(WordWrap(p.Desc, 0, p.WordWrap))
+		result.WriteString(WordWrap(p.cfg.Desc, 0, p.cfg.WordWrap))
 		result.WriteString("\n")
 	}
 
@@ -39,8 +39,8 @@ func (p *Parser) GenerateHelp() string {
 		result.WriteString(options)
 	}
 
-	if p.Epilog != "" {
-		result.WriteString("\n" + WordWrap(p.Epilog, 0, p.WordWrap))
+	if p.cfg.Epilog != "" {
+		result.WriteString("\n" + WordWrap(p.cfg.Epilog, 0, p.cfg.WordWrap))
 	}
 	return result.String()
 }
@@ -87,7 +87,7 @@ func (p *Parser) generateHelpSection(flags ruleFlag) string {
 	flagFmt := fmt.Sprintf("%%-%ds%%s\n", indent)
 
 	for _, opt := range options {
-		message := WordWrap(opt.Message, indent, p.WordWrap)
+		message := WordWrap(opt.Message, indent, p.cfg.WordWrap)
 		result.WriteString(fmt.Sprintf(flagFmt, opt.Flags, message))
 	}
 	return result.String()
