@@ -92,6 +92,16 @@ func TestStringToSlice(t *testing.T) {
 	assert.Equal(t, []string{"ONE"}, r)
 }
 
+func TestWordWrapNoIndent(t *testing.T) {
+	msg := cli.WordWrap(`No code is the best way to write secure and reliable applications.
+		Write nothing; deploy nowhere. This is just an example application, but imagine it doing 
+		anything you want.`,
+		0, 80)
+	assert.Equal(t, "No code is the best way to write secure and reliable applications. Write\n"+
+		"nothing; deploy nowhere. This is just an example application, but imagine it\n"+
+		"doing anything you want.", msg)
+}
+
 func ExampleCurlString() {
 	// Payload
 	payload, err := json.Marshal(map[string]string{
@@ -137,7 +147,7 @@ func ExampleWordWrap() {
 		3, 80)
 	fmt.Println(msg)
 	// Output:
-	// No code is the best way to write secure and reliable applications.Write
+	// No code is the best way to write secure and reliable applications. Write
 	//    nothing; deploy nowhere. This is just an example application, but imagine it
 	//    doing anything you want.
 }

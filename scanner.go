@@ -45,6 +45,7 @@ func Scan(p *Parser) (*linearSyntax, error) {
 	if err := s.scanPos(0); err != nil {
 		return nil, err
 	}
+
 	return s.syntax, nil
 }
 
@@ -76,7 +77,7 @@ func (s *scanner) scanPos(argPos int) error {
 		return err
 	}
 
-	return nil
+	return s.scanPos(argPos + 1)
 }
 
 func (s *scanner) scanFlag(argPos, charPos int, allowCombinedFlags bool) error {
@@ -101,87 +102,89 @@ func (s *scanner) scanFlag(argPos, charPos int, allowCombinedFlags bool) error {
 	for i := len(flag); i > 0; i-- {
 		// Find an alias that matches the prefix or complete arg
 		rule, end = s.matchAliases(flag[:i])
-		if rule != nil {
-			fmt.Printf("mached '%s' to rule '%s' end=%d\n", flag[:i], rule.Name, end)
-			if rule.HasFlag(isExpectingValue) {
-				// If the entire flag matched the rule
-				if end+1 == len(flag) {
-					// Expect the next arg to hold our value
-					fmt.Printf("'%s' matched rule '%s'\n", s.argv[argPos], rule.Name)
-					// consume the next arg for the value for this flag
-					if len(s.argv) <= argPos+1 {
-						return fmt.Errorf("expected flag '%s' to have a value", s.argv[argPos])
-					}
-					flagNode := &node{
-						Pos:   argPos,
-						Value: &s.argv[argPos+1],
-						Rule:  rule,
-					}
-					s.syntax.Add(flagNode)
-					s.syntax.Add(&node{
-						Pos:      argPos + 1,
-						ValueFor: flagNode,
-					})
-					return nil
-				}
-				// Is the next character an '='?
-				if flag[end+1] == '=' {
-					if len(flag) <= end+2 {
-						return fmt.Errorf("expected flag '%s' to have a value after '='", s.argv[argPos])
-					}
-					// the remainder of the flag is the value
-					value := flag[end+2:]
-					s.syntax.Add(&node{
-						Pos:   argPos,
-						Value: &value,
-						Rule:  rule,
-					})
-					return nil
-				}
 
-				if s.hasMode(AllowCombinedValues) {
-					// the remainder of the flag is the value
-					value := flag[end:]
-					s.syntax.Add(&node{
-						Pos:   argPos,
-						Value: &value,
-						Rule:  rule,
-					})
-				}
-				// If we get here, then we matched part of the flag, but it's not our flag because
-				// we expected a value and no value was provided. We know this because we sort our
-				// matchable aliases by length such that the longest flag will match first.
-			}
-			// Not Expecting value
-
-			fmt.Printf("added rule '%s' at pos '%d'\n", rule.Name, argPos)
-			// Add the rule and position to our syntax
+		// The flag did not match any aliases
+		if rule == nil {
 			s.syntax.Add(&node{
-				Pos:  argPos,
-				Rule: rule,
+				Pos:    argPos,
+				Offset: charPos,
 			})
-
-			// Are there more un matched characters?
-			if end != len(flag) {
-				fmt.Println("more un-matched")
-				// and we can match combined flags?
-				if allowCombinedFlags {
-					// attempt to match the next flag
-					return s.scanFlag(argPos, end, true)
-				}
-				// If we get here, then we matched part of the flag, but it's not our flag because
-				// there are trailing characters and allowedCombinedFlags was not set.
-				continue
-			}
-
+			return nil
 		}
 
-		// The flag did not match
+		fmt.Printf("mached '%s' to rule '%s' end=%d\n", flag[:i], rule.Name, end)
+		if rule.HasFlag(isExpectingValue) {
+			// If the entire flag matched the rule
+			fmt.Printf("end+1: %d flag: %d\n", end+1, len(flag))
+			if end+1 > len(flag) {
+				// Expect the next arg to hold our value
+				fmt.Printf("'%s' matched rule '%s'\n", s.argv[argPos], rule.Name)
+				// consume the next arg for the value for this flag
+				if len(s.argv) <= argPos+1 {
+					return fmt.Errorf("expected flag '%s' to have a value", s.argv[argPos])
+				}
+				flagNode := &node{
+					Pos:   argPos,
+					Value: &s.argv[argPos+1],
+					Rule:  rule,
+				}
+				s.syntax.Add(flagNode)
+				s.syntax.Add(&node{
+					Pos:      argPos + 1,
+					ValueFor: flagNode,
+				})
+				return nil
+			}
+			// Is the next character an '='?
+			if flag[end+1] == '=' {
+				if len(flag) <= end+2 {
+					return fmt.Errorf("expected flag '%s' to have a value after '='", s.argv[argPos])
+				}
+				// the remainder of the flag is the value
+				value := flag[end+2:]
+				s.syntax.Add(&node{
+					Pos:   argPos,
+					Value: &value,
+					Rule:  rule,
+				})
+				return nil
+			}
+
+			if s.hasMode(AllowCombinedValues) {
+				// the remainder of the flag is the value
+				value := flag[end:]
+				s.syntax.Add(&node{
+					Pos:   argPos,
+					Value: &value,
+					Rule:  rule,
+				})
+			}
+			// If we get here, then we matched part of the flag, but it's not our flag because
+			// we expected a value and no value was provided. We know this because we sort our
+			// matchable aliases by length such that the longest flag will match first.
+		}
+		// Not Expecting value
+
+		fmt.Printf("added rule '%s' at pos '%d'\n", rule.Name, argPos)
+		// Add the rule and position to our syntax
 		s.syntax.Add(&node{
-			Pos:    argPos,
-			Offset: charPos,
+			Pos:  argPos,
+			Rule: rule,
 		})
 
+		// Are there more un matched characters?
+		if end != len(flag) {
+			fmt.Println("more un-matched")
+			// and we can match combined flags?
+			if allowCombinedFlags {
+				// attempt to match the next flag
+				return s.scanFlag(argPos, end, true)
+			}
+			// If we get here, then we matched part of the flag, but it's not our flag because
+			// there are trailing characters and allowedCombinedFlags was not set.
+			continue
+		}
+		return nil
 		// Are there more un matched characters and we can match combined flags?
 		/*if charPos+1 != len(flag) && allowCombinedFlags {
 			// attempt to match the next flag

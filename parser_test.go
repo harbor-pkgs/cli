@@ -149,7 +149,7 @@ func TestFlagExpectedValue(t *testing.T) {
 	// Then
 	assert.NotNil(t, err)
 	assert.Equal(t, cli.ErrorRetCode, retCode)
-	assert.Equal(t, "expected flag '--foo' to have an argument", err.Error())
+	assert.Equal(t, "expected flag '--foo' to have a value", err.Error())
 	assert.Equal(t, "", foo)
 }
 

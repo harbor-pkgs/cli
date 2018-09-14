@@ -140,9 +140,8 @@ func DedentTrim(cutset, input string) string {
 // Indenting the following lines `indent` number of spaces
 func WordWrap(msg string, indent int, wordWrap int) string {
 	// Remove any previous formatting
-	regex, _ := regexp.Compile(" {2,}|\n|\t")
-	msg = regex.ReplaceAllString(msg, "")
-
+	regex, _ := regexp.Compile(` {2,}|\n|\t`)
+	msg = regex.ReplaceAllString(msg, " ")
 	if (wordWrap - indent) <= 0 {
 		panic(fmt.Sprintf("indent spacing '%d' exceeds wordwrap length '%d'\n", indent, wordWrap))
 	}
@@ -155,40 +154,24 @@ func WordWrap(msg string, indent int, wordWrap int) string {
 	remaining := wordWrap
 
 	var words []string
-	for _, word := range strings.Fields(msg) {
+	for i, word := range strings.Fields(msg) {
 		if len(word)+1 > remaining {
-			words = append(words, "\n"+indentWord, word)
+			// Add a new line, our indent, word and the space
+			words = append(words, "\n"+indentWord+word+" ")
 			remaining = wordWrap - (len(word) + indent)
+
+			// Since this word should be on the next line,
+			// Trim the previous word of any space (if there is a prev word)
+			if i > 0 {
+				words[i-1] = strings.TrimSuffix(words[i-1], " ")
+			}
 		} else {
-			words = append(words, word)
+			// Regular word, just add a space
+			words = append(words, word+" ")
 			remaining = remaining - (len(word) + 1)
 		}
 	}
-	return joinWords(words, " ")
-}
-
-// Join words with a separator only if the string doesn't begin with a new line
-// This avoids creating wrapped lines with hanging spaces at the end
-func joinWords(a []string, sep string) string {
-	n := len(sep) * (len(a) - 1)
-	for i := 0; i < len(a); i++ {
-		n += len(a[i])
-	}
-
-	var c int
-	b := make([]byte, n)
-	bp := copy(b, a[0])
-	c += len(a[0])
-	for _, s := range a[1:] {
-		// Do not insert a separator if the next word starts with \n
-		if !strings.HasPrefix(s, "\n") {
-			bp += copy(b[bp:], sep)
-			c += len(sep)
-		}
-		bp += copy(b[bp:], s)
-		c += len(s)
-	}
-	return string(b[:c])
+	return strings.TrimSuffix(strings.Join(words, ""), " ")
 }
 
 // Returns true if the file has ModeCharDevice set. This is useful when determining if
