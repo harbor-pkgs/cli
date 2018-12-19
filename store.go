@@ -33,7 +33,7 @@ func newResultStore(rules ruleList) *resultStore {
 func (rs *resultStore) From(ctx context.Context, from FromStore) error {
 	for _, rule := range rs.rules {
 		value, count, err := from.Get(ctx, rule.Name, rule.ValueType())
-		fmt.Printf("[%s]Get(%s, %s) - '%v' '%d'\n", from.Source(), rule.Name, rule.ValueType(), value, count)
+		fmt.Printf("[%s] Get(%s, %s) - '%v' '%d'\n", from.Source(), rule.Name, rule.ValueType(), value, count)
 		if err != nil {
 			return err
 		}

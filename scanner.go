@@ -28,7 +28,8 @@ type scanner struct {
 	mode    Mode
 }
 
-func Scan(p *Parser) (*linearSyntax, error) {
+// Scan the argv for flags and add them to our linear syntax store
+func scanArgv(p *Parser) (*linearSyntax, error) {
 	// Collect all the flag aliases and sort them by length such that when looking for matching flags we match
 	// flag names before short aliases (-a is not a match for -amend)
 	var sortedAliases sortByLen = p.rules.GetAliases()
@@ -42,14 +43,19 @@ func Scan(p *Parser) (*linearSyntax, error) {
 		mode:    p.mode,
 	}
 
-	if err := s.scanPos(0); err != nil {
+	// First scan for flags
+	if err := s.scanFlags(0); err != nil {
 		return nil, err
 	}
+
+	// Scan for non-flag arguments and sub commands
+	s.scanArgs()
 
 	return s.syntax, nil
 }
 
-func (s *scanner) scanPos(argPos int) error {
+
+func (s *scanner) scanFlags(argPos int) error {
 	if len(s.argv) == argPos {
 		fmt.Println("no more args to scan")
 		return nil
@@ -72,13 +78,31 @@ func (s *scanner) scanPos(argPos int) error {
 		}
 	}
 
-	// scan for arguments
-	if err := s.scanArgument(argPos); err != nil {
-		return err
-	}
-
-	return s.scanPos(argPos + 1)
+	return s.scanFlags(argPos + 1)
 }
+
+func (s *scanner) scanArgs() {
+	for _, rule := range s.rules {
+		// TODO: Look for commands before assigning arguments
+		/*if rule.HasFlag(isCommand) {
+
+		}*/
+		if rule.HasFlag(isArgument) {
+			// Find the first argument that was not determined to be a flag or a subcommand
+			for i, arg := range s.argv {
+				if !s.syntax.Contains(i) {
+					s.syntax.Add(&node{
+						Pos:   i,
+						Value: &arg,
+						Rule:  rule,
+					})
+					break
+				}
+			}
+		}
+	}
+}
+
 
 func (s *scanner) scanFlag(argPos, charPos int, allowCombinedFlags bool) error {
 	// sanity check

@@ -135,6 +135,9 @@ func (a *Argument) toRule() (*rule, error) {
 	return r, nil
 }
 
+// TODO: Add support for Env variant which only sources environment variables.
+// Sort of like 'Config' options in old args package
+
 func newStoreFunc(dest interface{}) (StoreFunc, ruleFlag, error) {
 	d := reflect.ValueOf(dest)
 	if d.Kind() != reflect.Ptr {

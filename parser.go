@@ -196,38 +196,35 @@ func (p *Parser) Parse(ctx context.Context, argv []string) (int, error) {
 
 	//fmt.Printf("rules: %s\n", p.rules.String())
 
-	if p.syntax, err = Scan(p); err != nil {
+	// Scan the argv and attempt to assign rules to argv positions, this is
+	// only a best effort since a sub command might add new flags and args.
+	if p.syntax, err = scanArgv(p); err != nil {
 		fmt.Println("scan fail")
 		// report flags that expect values
 		return ErrorRetCode, err
 	}
 
-	/*subCmd := p.nextSubCmd()
-	if subCmd != nil {
+	/*if subCmd := p.nextSubCmd(); subCmd != nil {
 		// Run the sub command
 		// TODO: Might not need to make a copy of ourselves, just pass in the current parser
 		return subCmd(ctx, New(p))
 	}*/
 
-	// If the user asked to error on unknown arguments
-	if !p.HasMode(AllowUnknownArgs) {
-		args := p.UnProcessedArgs()
-		if len(args) != 0 {
-			return ErrorRetCode, fmt.Errorf("'%s' was provided but not defined", args[0])
-		}
-	}
-
 	fmt.Printf("syntax: %s\n", p.syntax.String())
-	// If they asked for help
+	// --help is a special case flag, as it short circuits the normal store
+	// and validation of arguments. This allows the user to pass other arguments
+	// along side -h and still get a help message before getting invalid arg errors
+	// TODO: Support other short circuit flags besides -h, in the case a user wishes to
+	// TODO: Not use -h has the help flag.
 	if p.syntax.FindWithFlag(isHelpRule) != nil {
 		fmt.Printf("type %s\n", reflect.TypeOf(&HelpError{}))
 		return ErrorRetCode, &HelpError{}
 	}
 
-	// If we get here, we are at the top of the parent tree and can collect values
+	// If we get here, we are at the top of the parent tree
 	results := newResultStore(p.rules)
 
-	// Retrieve values from any stores provided by the user
+	// Retrieve values from any stores provided by the user first
 	for _, store := range p.stores {
 		if err := results.From(ctx, store); err != nil {
 			return ErrorRetCode, fmt.Errorf("while reading from store '%s': %s", store.Source(), err)
@@ -245,6 +242,14 @@ func (p *Parser) Parse(ctx context.Context, argv []string) (int, error) {
 func (p *Parser) validateAndStore(rs *resultStore) (int, error) {
 	// TODO: Support option exclusion `--option1 | --option2`
 	// TODO: Support option dependency (option2 cannot be used unless option1 is also defined)
+
+	// If the user asked to error on unknown arguments
+	if !p.HasMode(AllowUnknownArgs) {
+		args := p.UnProcessedArgs()
+		if len(args) != 0 {
+			return ErrorRetCode, fmt.Errorf("'%s' was provided but not defined", args[0])
+		}
+	}
 
 	fmt.Printf("4 results: %+v\n", rs.values)
 	for _, rule := range p.rules {
