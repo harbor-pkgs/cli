@@ -27,7 +27,7 @@ func (e *envStore) Get(ctx context.Context, name string, valueType ValueType) (i
 		return nil, 0, nil
 	}
 
-	if rule.EnvVar != "" {
+	if rule.EnvVar == "" {
 		return nil, 0, nil
 	}
 

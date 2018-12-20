@@ -9,6 +9,7 @@ import (
 	"github.com/harbor-pkgs/cli"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
+	"os"
 )
 
 func TestParserNoRules(t *testing.T) {
@@ -285,6 +286,33 @@ func TestFlagReplace(t *testing.T) {
 
 // TODO: Test matching flags with no prefix if enabled
 
+func TestBarEnvVar(t *testing.T) {
+	var bar, foo, cat string
+
+	p := cli.New(nil)
+	p.Add(&cli.EnvVar{Name: "BAR", Store: &bar})
+	p.Add(&cli.EnvVar{Name: "foo", Env: "FOO", Store: &foo})
+	p.Add(&cli.EnvVar{Name: "cat", Env: "CAT", Store: &cat, Default: "cat-thing"})
+
+	// Given
+	os.Setenv("BAR", "bar-thing")
+	defer os.Unsetenv("BAR")
+	os.Setenv("FOO", "foo-thing")
+	defer os.Unsetenv("FOO")
+	os.Unsetenv("CAT")
+
+	retCode, err := p.Parse(nil, []string{})
+
+	// Then
+	assert.Nil(t, err)
+	assert.Equal(t, 0, retCode)
+	assert.Equal(t, "bar-thing", bar)
+	assert.Equal(t, "foo-thing", foo)
+	assert.Equal(t, "cat-thing", cat)
+}
+
+// TODO: Test with `Required` restriction for EnvVar
+
 func TestBarArgument(t *testing.T) {
 	var bar string
 
@@ -433,6 +461,7 @@ func TestHelpMessage(t *testing.T) {
 	p.Add(&cli.Argument{Name: "arg-one", Required: true, Store: &argOne, Help: "this is a required argument"})
 	p.Add(&cli.Argument{Name: "arg-two", Store: &argTwo, Help: "this argument is optional"})
 
+	// TODO: Consider renaming `IfExits` to `True` or `Set`
 	p.Add(&cli.Flag{Name: "flag", IfExists: &hasFlag, Help: "this is my flag"})
 	p.Add(&cli.Flag{Name: "foo", Store: &foo, Aliases: []string{"f"}, Help: "used to store bars"})
 	p.Add(&cli.Flag{Name: "bar", Store: &bar, Help: "used to store foos"})
@@ -471,4 +500,53 @@ func TestHelpMessage(t *testing.T) {
 	compare("  -help, -h           display this help message and exit")
 	compare("")
 	compare("Copyright 2018 By Derrick J. Wippler")
+
+	// TODO: Test Usage when EnvVar are used
+}
+
+func TestGenerateEnvConfig(t *testing.T) {
+	var bar, foo string
+	var endpoints []string
+	var count int
+
+	p := cli.New(nil)
+	p.Add(&cli.EnvVar{Name: "BAR", Store: &bar, Help: "A bar to put beer into, with extra hops"})
+	p.Add(&cli.EnvVar{Name: "foo", Env: "FOO", Store: &foo, Help: "Lorem ipsum dolor sit amet, " +
+		"consect etura dipiscing elit, sed do eiusmod tempor incididunt ut labore etmollit anim id " +
+		"est laborum."})
+	p.Add(&cli.EnvVar{Name: "count", Env: "COUNT", Store: &count, Default: "1", Help: "The number of things to come"})
+	p.Add(&cli.EnvVar{Name: "endpoints", Env: "ENDPOINTS", Store: &endpoints,
+		Help: "A comma separated list of endpoints our application can connect too"})
+
+	// Given
+	retCode, err := p.Parse(nil, []string{})
+
+	// Then
+	require.Nil(t, err)
+	require.Equal(t, 0, retCode)
+
+	config := p.GenerateEnvConfig()
+	fmt.Println(config)
+
+	lines := strings.Split(config, "\n")
+	var i int
+
+	compare := func(expected string) {
+		require.Equal(t, expected, lines[i])
+		i++
+	}
+
+	compare(`# A bar to put beer into, with extra hops`)
+	compare(`BAR=`)
+	compare(``)
+	compare(`# The number of things to come`)
+	compare(`# Default: "1"`)
+	compare(`COUNT=`)
+	compare(``)
+	compare(`# A comma separated list of endpoints our application can connect too`)
+	compare(`ENDPOINTS=`)
+	compare(``)
+	compare(`# Lorem ipsum dolor sit amet, consect etura dipiscing elit, sed do eiusmod tempor incididunt ut`)
+	compare(`# labore etmollit anim id est laborum.`)
+	compare(`FOO=`)
 }

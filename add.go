@@ -135,8 +135,58 @@ func (a *Argument) toRule() (*rule, error) {
 	return r, nil
 }
 
-// TODO: Add support for Env variant which only sources environment variables.
-// Sort of like 'Config' options in old args package
+type EnvVar struct {
+	Name     string
+	Help     string
+	Env      string
+	Default  string
+	Required bool
+
+	Store    interface{}
+	IfExists *bool
+	Bool     *bool
+}
+
+func (e *EnvVar) name() string {
+	return e.Name
+}
+
+func (e *EnvVar) toRule() (*rule, error) {
+	if e.Name == "" {
+		return nil, fmt.Errorf("failed to add new EnvVar; 'Name' is required")
+	}
+
+	r := &rule{
+		Name:    e.Name,
+		HelpMsg: e.Help,
+		EnvVar:  e.Env,
+	}
+
+	if r.EnvVar == "" {
+		r.EnvVar = e.Name
+	}
+
+	if e.Store != nil {
+		fnc, flag, err := newStoreFunc(e.Store)
+		if err != nil {
+			return nil, fmt.Errorf("invalid 'Store' while adding EnvVar '%s': %s", e.Name, err)
+		}
+		r.SetFlag(flag, true)
+		r.StoreFuncs = append(r.StoreFuncs, fnc)
+	}
+
+	if e.Default != "" {
+		r.Default = &e.Default
+	}
+	r.SetFlag(isRequired, e.Required)
+	r.SetFlag(isExpectingValue, true)
+
+	if e.IfExists != nil {
+		r.StoreFuncs = append(r.StoreFuncs, toExists(e.IfExists))
+	}
+
+	return r, nil
+}
 
 func newStoreFunc(dest interface{}) (StoreFunc, ruleFlag, error) {
 	d := reflect.ValueOf(dest)

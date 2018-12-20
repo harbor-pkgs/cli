@@ -34,6 +34,8 @@ func (r ruleList) String() string {
 }
 
 func (r ruleList) ValidateRules() (ruleList, error) {
+	// TODO: Warn if EnvVar is used by more than one rule
+
 	var greedyRule *rule
 	for idx, rule := range r {
 		// Duplicate rule check
@@ -107,6 +109,15 @@ func (r ruleList) ValidateRules() (ruleList, error) {
 		}
 	}
 	return r, nil
+}
+
+func (r ruleList) GetRuleByEnv(env string) *rule {
+	for _, rule := range r {
+		if rule.EnvVar == env {
+			return rule
+		}
+	}
+	return nil
 }
 
 func (r ruleList) GetRuleByAlias(alias string) *rule {

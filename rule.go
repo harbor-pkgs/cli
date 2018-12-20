@@ -85,6 +85,28 @@ func (r *rule) GenerateUsage() string {
 	return ""
 }
 
+func (r *rule) GenerateEnvUsage() string {
+	//result := "# Type: " + r.ValueTypeString()
+	if r.Default != nil {
+		return `# Default: "` + *r.Default + `"` + "\n"
+	}
+	return ""
+}
+
+func (r *rule) ValueTypeString() string {
+	// TODO: Should return the actual kind in addition to the value type
+	// IE: <int> or <int>,<int> etc...
+	switch {
+	case r.HasFlag(isScalar):
+		return "<string>"
+	case r.HasFlag(isList):
+		return "<s1>,<s2>"
+	case r.HasFlag(isMap):
+		return "<key>=<value>"
+	}
+	return "<unknown-value-type>"
+}
+
 func (r *rule) GenerateHelp() (string, string) {
 	var parens []string
 	paren := ""
@@ -105,14 +127,7 @@ func (r *rule) GenerateHelp() (string, string) {
 	// if the option expects a value optionally display this depending on type
 	// TODO: Allow the user to override this?
 	if r.HasFlag(isFlag) && r.HasFlag(isExpectingValue) {
-		switch {
-		case r.HasFlag(isScalar):
-			valueType = " <string>"
-		case r.HasFlag(isList):
-			valueType = " <s1>,<s2>"
-		case r.HasFlag(isMap):
-			valueType = " <key>=<value>"
-		}
+		valueType = " " + r.ValueTypeString()
 	}
 
 	if r.HasFlag(isArgument) {
