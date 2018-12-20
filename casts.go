@@ -26,7 +26,7 @@ func toInt(ptr *int) StoreFunc {
 	}
 }
 
-func toExists(ptr *bool) StoreFunc {
+func toSet(ptr *bool) StoreFunc {
 	return func(value interface{}, count int) error {
 		if count != 0 {
 			*ptr = true

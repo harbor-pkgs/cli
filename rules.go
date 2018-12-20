@@ -3,6 +3,7 @@ package cli
 import (
 	"fmt"
 	"regexp"
+	"sort"
 	"strings"
 
 	"github.com/davecgh/go-spew/spew"
@@ -31,6 +32,24 @@ func (r ruleList) String() string {
 		lines = append(lines, fmt.Sprintf("[%d] %s", i, spew.Sdump(rule)))
 	}
 	return strings.Join(lines, "\n")
+}
+
+func (r *ruleList) SortRulesWithFlag(flag ruleFlag) ruleList {
+	var results ruleList
+
+	var sorted []string
+	for _, rule := range *r {
+		if !rule.HasFlag(flag) {
+			continue
+		}
+		sorted = append(sorted, rule.Name)
+	}
+	sort.Strings(sorted)
+
+	for _, ruleName := range sorted {
+		results = append(results, r.GetRule(ruleName))
+	}
+	return results
 }
 
 func (r ruleList) ValidateRules() (ruleList, error) {

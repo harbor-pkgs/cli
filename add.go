@@ -24,13 +24,8 @@ type Flag struct {
 	Hidden    bool
 
 	Store       interface{}
-	Int         *int
-	String      *string
 	Count       *int
-	StringSlice []string
-	IntSlice    []int
-	IfExists    *bool
-	Bool        *bool
+	IsSet       *bool
 }
 
 func (f *Flag) name() string {
@@ -73,8 +68,8 @@ func (f *Flag) toRule() (*rule, error) {
 		r.SetFlag(canRepeat, true)
 		r.StoreFuncs = append(r.StoreFuncs, toCount(f.Count))
 	}
-	if f.IfExists != nil {
-		r.StoreFuncs = append(r.StoreFuncs, toExists(f.IfExists))
+	if f.IsSet != nil {
+		r.StoreFuncs = append(r.StoreFuncs, toSet(f.IsSet))
 	}
 	return r, nil
 }
@@ -87,10 +82,9 @@ type Argument struct {
 	Required  bool
 	CanRepeat bool
 
-	Store    interface{}
-	Count    *int
-	IfExists *bool
-	Bool     *bool
+	Store interface{}
+	Count *int
+	IsSet *bool
 }
 
 func (a *Argument) name() string {
@@ -128,8 +122,8 @@ func (a *Argument) toRule() (*rule, error) {
 		r.SetFlag(canRepeat, true)
 		r.StoreFuncs = append(r.StoreFuncs, toCount(a.Count))
 	}
-	if a.IfExists != nil {
-		r.StoreFuncs = append(r.StoreFuncs, toExists(a.IfExists))
+	if a.IsSet != nil {
+		r.StoreFuncs = append(r.StoreFuncs, toSet(a.IsSet))
 	}
 
 	return r, nil
@@ -142,9 +136,8 @@ type EnvVar struct {
 	Default  string
 	Required bool
 
-	Store    interface{}
-	IfExists *bool
-	Bool     *bool
+	Store interface{}
+	IsSet *bool
 }
 
 func (e *EnvVar) name() string {
@@ -180,9 +173,10 @@ func (e *EnvVar) toRule() (*rule, error) {
 	}
 	r.SetFlag(isRequired, e.Required)
 	r.SetFlag(isExpectingValue, true)
+	r.SetFlag(isEnvVar, true)
 
-	if e.IfExists != nil {
-		r.StoreFuncs = append(r.StoreFuncs, toExists(e.IfExists))
+	if e.IsSet != nil {
+		r.StoreFuncs = append(r.StoreFuncs, toSet(e.IsSet))
 	}
 
 	return r, nil

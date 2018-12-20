@@ -22,6 +22,7 @@ const (
 	isArgument
 	isRequired
 	isFlag
+	isEnvVar
 	canRepeat
 	isExpectingValue
 	isHidden
@@ -93,7 +94,7 @@ func (r *rule) GenerateEnvUsage() string {
 	return ""
 }
 
-func (r *rule) ValueTypeString() string {
+func (r *rule) TypeUsage() string {
 	// TODO: Should return the actual kind in addition to the value type
 	// IE: <int> or <int>,<int> etc...
 	switch {
@@ -127,11 +128,15 @@ func (r *rule) GenerateHelp() (string, string) {
 	// if the option expects a value optionally display this depending on type
 	// TODO: Allow the user to override this?
 	if r.HasFlag(isFlag) && r.HasFlag(isExpectingValue) {
-		valueType = " " + r.ValueTypeString()
+		valueType = " " + r.TypeUsage()
 	}
 
 	if r.HasFlag(isArgument) {
 		return "  " + r.Name, r.HelpMsg
+	}
+
+	if r.HasFlag(isEnvVar) {
+		return "  " + r.Name + " " + r.TypeUsage() , r.HelpMsg
 	}
 
 	var flags []string

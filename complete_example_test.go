@@ -64,10 +64,10 @@ func Example_complete() {
 
 	// Set bool to true if the option is present on the command line
 	parser.Add(&cli.Flag{
-		Help:     "Turn on universe debug, it must give up it's secrets",
-		Aliases:  []string{"d"},
-		Name:     "debug",
-		IfExists: &conf.Debug,
+		Help:    "Turn on universe debug, it must give up it's secrets",
+		Aliases: []string{"d"},
+		Name:    "debug",
+		IsSet:   &conf.Debug,
 	})
 
 	// --help option is provided by default, however you can override

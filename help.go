@@ -3,7 +3,6 @@ package cli
 import (
 	"bytes"
 	"fmt"
-	"sort"
 	"strings"
 )
 
@@ -41,7 +40,11 @@ func (p *Parser) GenerateHelp() string {
 		result.WriteString(options)
 	}
 
-	// TODO: EnvVar section
+	envVars := p.generateHelpSection(isEnvVar)
+	if options != "" {
+		result.WriteString("\nEnvironment Vars:\n")
+		result.WriteString(envVars)
+	}
 
 	if p.cfg.Epilog != "" {
 		result.WriteString("\n" + WordWrap(p.cfg.Epilog, 0, p.cfg.WordWrap))
@@ -53,20 +56,7 @@ func (p *Parser) GenerateHelp() string {
 func (p *Parser) GenerateEnvConfig() string {
 	var result bytes.Buffer
 
-	var sorted []string
-	for _, rule := range p.rules {
-		if rule.HasFlag(isHelpRule) {
-			continue
-		}
-		if rule.EnvVar != "" {
-			sorted = append(sorted, rule.EnvVar)
-		}
-	}
-
-	sort.Strings(sorted)
-
-	for _, envName := range sorted {
-		rule := p.rules.GetRuleByEnv(envName)
+	for _, rule := range p.rules.SortRulesWithFlag(isEnvVar) {
 		if rule.HelpMsg != "" {
 			for _, line := range strings.Split(WordWrap(rule.HelpMsg, 0, p.cfg.WordWrap), "\n") {
 				result.WriteString("# " + line + "\n")
