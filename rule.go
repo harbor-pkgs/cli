@@ -5,6 +5,7 @@ import (
 	"fmt"
 	"regexp"
 	"strings"
+	"bytes"
 )
 
 var regexHasPrefix = regexp.MustCompile(`^(\W+)([\w|-]*)$`)
@@ -94,8 +95,43 @@ func (r *rule) GenerateUsage() string {
 	return ""
 }
 
-func (r *rule) GenerateEnvUsage() string {
-	return "export " + r.EnvVar + "=" + r.TypeUsage()
+// Generate usage lines suitable for use in an example config
+//
+//   # The count of things to come (Default:"1")
+//   # export COUNT=<int>
+func (r *rule) GenerateEnvUsage(wordWrap int) []byte {
+	result := r.generateConfigHelp(wordWrap)
+	result.WriteString("# " + "export " + r.EnvVar + "=" + r.TypeUsage() + "\n\n")
+	return result.Bytes()
+}
+
+// Generate usage lines suitable for use in an example INI config
+//
+//   # The count of things to come (Default:"1")
+//   # count=<int>
+func (r *rule) GenerateINIUsage(wordWrap int) []byte {
+	result := r.generateConfigHelp(wordWrap)
+	result.WriteString("# " + r.Name + "=" + r.TypeUsage() + "\n\n")
+	return result.Bytes()
+}
+
+// Generate help lines suitable for use in an example config
+//
+//   # The count of things to come (Default:"1")
+func (r *rule) generateConfigHelp(wordWrap int) bytes.Buffer {
+	var result bytes.Buffer
+
+	// Append the default value to the end of the help string
+	helpMsg := r.HelpMsg
+	if r.Default != nil {
+		helpMsg += ` (Default:"` + *r.Default + `")`
+	}
+
+	// Word wrap the help string
+	for _, line := range strings.Split(WordWrap(helpMsg, 0, wordWrap), "\n") {
+		result.WriteString("# " + line + "\n")
+	}
+	return result
 }
 
 func (r *rule) TypeUsage() string {

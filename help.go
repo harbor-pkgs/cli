@@ -3,7 +3,6 @@ package cli
 import (
 	"bytes"
 	"fmt"
-	"strings"
 )
 
 // Returns a string that contains documentation for each flag, argument and envvar provided
@@ -68,9 +67,9 @@ func (p *Parser) GenerateHelp() string {
 	return result.String()
 }
 
-// Returns a byte array that contains each environment variable name provided by 'Env' with
-// documentation and type signature. This is suitable for generating an example env file for
-// users of your app.
+// Returns a byte array that contains documentation and type signature for each flag, argument
+// and envvar with an source environment variable defined. This is suitable for generating an
+// environment example file for users of your app to source into their shell environment.
 //
 //   # The count of things to come (Default:"1")
 //   # export COUNT=<int>
@@ -78,25 +77,33 @@ func (p *Parser) GenerateHelp() string {
 //   # A comma separated list of endpoints our application can connect too
 //   # export ENDPOINTS=<str>,<str>
 func (p *Parser) GenerateEnvConfig() []byte {
-	// TODO: Create a method like this that creates an example INI file
 	var result bytes.Buffer
-
 	for _, rule := range p.rules {
-		if rule.HelpMsg == "" || rule.EnvVar == "" {
+		if rule.EnvVar == "" {
 			continue
 		}
+		result.Write(rule.GenerateEnvUsage(p.cfg.WordWrap))
+	}
+	return result.Bytes()
+}
 
-		// Append the default value to the end of the help string
-		helpMsg := rule.HelpMsg
-		if rule.Default != nil {
-			helpMsg += ` (Default:"` + *rule.Default + `")`
+// Returns a byte array that contains documentation and type signature for each flag, and envvar
+// added to the parser. This is suitable for generating an INI example config file
+// for users of your app to modify.
+//
+//   # The count of things to come (Default:"1")
+//   # count=<int>
+//
+//   # A comma separated list of endpoints our application can connect too
+//   # endpoints=<str>,<str>
+func (p *Parser) GenerateINIConfig() []byte {
+	var result bytes.Buffer
+	for _, rule := range p.rules {
+		// Exclude sub commands and the help rule
+		if rule.HasFlag(isCommand|isHelpRule){
+			continue
 		}
-
-		// Word wrap the help string
-		for _, line := range strings.Split(WordWrap(helpMsg, 0, p.cfg.WordWrap), "\n") {
-			result.WriteString("# " + line + "\n")
-		}
-		result.WriteString("# " + rule.GenerateEnvUsage() + "\n\n")
+		result.Write(rule.GenerateINIUsage(p.cfg.WordWrap))
 	}
 	return result.Bytes()
 }

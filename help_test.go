@@ -79,7 +79,7 @@ func TestHelpMessage(t *testing.T) {
 	compare("Copyright 2018 By Derrick J. Wippler")
 }
 
-func TestGenerateEnvConfig(t *testing.T) {
+func TestGenerateConfig(t *testing.T) {
 	var bar, foo, thing string
 	var endpoints []string
 	var count int
@@ -129,4 +129,33 @@ func TestGenerateEnvConfig(t *testing.T) {
 	compare("")
 	compare(`# This is a rather simple thing (Default:"Let's call it a thingamajig")`)
 	compare("# export THE_THING=<string>")
+
+
+	// Test INI Config
+	config = string(p.GenerateINIConfig())
+	fmt.Println(config)
+
+	lines = strings.Split(config, "\n")
+	i = 0
+
+	compare = func(expected string) {
+		require.Equal(t, expected, lines[i])
+		i++
+	}
+
+	compare("# A bar to put beer into, with extra hops")
+	compare("# BAR=<string>")
+	compare("")
+	compare("# Lorem ipsum dolor sit amet, consect etura dipiscing elit, sed do eiusmod tempor incididunt ut")
+	compare("# labore etmollit anim id est laborum.")
+	compare("# foo=<string>")
+	compare("")
+	compare(`# The number of things to come (Default:"1")`)
+	compare("# count=<int>")
+	compare("")
+	compare("# A comma separated list of endpoints our application can connect too")
+	compare("# endpoints=<str>,<str>")
+	compare("")
+	compare(`# This is a rather simple thing (Default:"Let's call it a thingamajig")`)
+	compare("# thing=<string>")
 }
