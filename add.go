@@ -199,19 +199,26 @@ func newStoreFunc(dest interface{}) (StoreFunc, ruleFlag, error) {
 	if d.Kind() != reflect.Ptr {
 		return nil, isScalar, fmt.Errorf("cannot use non pointer type '%s'; must provide a pointer", d.Kind())
 	}
+
+	// Dereference the pointer
 	d = reflect.Indirect(d)
+
+	// Determine if it's a scalar, slice or map
 	switch d.Kind() {
+
 	case reflect.Array, reflect.Slice:
 		elem := reflect.TypeOf(dest).Elem().Elem()
-		// TODO: Support []bool
 		switch elem.Kind() {
 		case reflect.Int:
 			return toIntSlice(dest.(*[]int)), isList | isInt, nil
 		case reflect.String:
 			return toStringSlice(dest.(*[]string)), isList | isString, nil
+		case reflect.Bool:
+			return toBoolSlice(dest.(*[]bool)), isList | isBool, nil
 		default:
 			return nil, isList, fmt.Errorf("slice of type '%s' is not supported", elem.Kind())
 		}
+
 	case reflect.Map:
 		key := d.Type().Key()
 		elem := d.Type().Elem()
@@ -221,15 +228,20 @@ func newStoreFunc(dest interface{}) (StoreFunc, ruleFlag, error) {
 		// TODO: Support map of int and bool
 		return nil, isMap, fmt.Errorf("cannot use 'map[%s]%s'; only "+
 			"'map[string]string' supported", key.Kind(), elem.Kind())
+
 	case reflect.String:
 		return toString(dest.(*string)), isScalar | isString, nil
+
 	case reflect.Bool:
 		return toBool(dest.(*bool)), isScalar | isBool, nil
+
 	case reflect.Int:
 		return toInt(dest.(*int)), isScalar | isInt, nil
+
+	// Unhandled types
 	case reflect.Uint, reflect.Uint8, reflect.Uint16, reflect.Uint32, reflect.Uint64, reflect.Uintptr, reflect.Float32,
 		reflect.Float64, reflect.Interface, reflect.Ptr, reflect.Int8, reflect.Int16, reflect.Int32, reflect.Int64:
-		return nil, isScalar, fmt.Errorf("cannot use '%s'; type not supported", d.Kind())
+		return nil, isScalar, fmt.Errorf("cannot store '%s'; type not supported", d.Kind())
 	}
 	return nil, isScalar, fmt.Errorf("unhandled type '%s'", d.Kind())
 }

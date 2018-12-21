@@ -40,6 +40,21 @@ func TestParserNoStore(t *testing.T) {
 	}
 }
 
+func TestInvalidStoreType(t *testing.T) {
+	var foo int64
+
+	p := cli.New(nil)
+	p.Add(&cli.Flag{Name: "foo", Store: &foo, Aliases: []string{"f"}})
+
+	// Given
+	retCode, err := p.Parse(nil, []string{})
+
+	// Then
+	assert.NotNil(t, err)
+	assert.Equal(t, cli.ErrorRetCode, retCode)
+	assert.Contains(t, err.Error(), "invalid 'Store' while adding flag 'foo': cannot store 'int64'; type not supported")
+}
+
 func TestParserAddHelpWithFlag(t *testing.T) {
 	var hasFlag bool
 	p := cli.New(nil)
@@ -224,8 +239,27 @@ func TestFlagIsRequired(t *testing.T) {
 	assert.Equal(t, "flag '--foo' is required", err.Error())
 }
 
+func TestFlagWithBoolSlice(t *testing.T) {
+	var foo []bool
+	var count int
+
+	p := cli.New(nil)
+	// Count implies 'CanRepeat=true'
+	p.Add(&cli.Flag{Name: "foo", Store: &foo, Count: &count, Aliases: []string{"f"}})
+
+	// Given
+	retCode, err := p.Parse(nil, []string{"--foo", "true", "-f", "false", "-f", "true"})
+
+	// Then
+	assert.Nil(t, err)
+	assert.Equal(t, 0, retCode)
+	assert.Equal(t, 3, count)
+	assert.Equal(t, []bool{true, false, true}, foo)
+}
+
 func TestFlagWithSlice(t *testing.T) {
 	var foo []string
+	// TODO: Test array with 'Store' instead of slice 'var bar [2]string'
 	var count int
 
 	p := cli.New(nil)
@@ -239,7 +273,7 @@ func TestFlagWithSlice(t *testing.T) {
 	assert.Nil(t, err)
 	assert.Equal(t, 0, retCode)
 	assert.Equal(t, 2, count)
-	sort.Strings(foo)
+	//sort.Strings(foo) TODO: Remove
 	assert.Equal(t, []string{"bar,bang", "foo"}, foo)
 }
 

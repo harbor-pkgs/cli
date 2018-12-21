@@ -139,3 +139,35 @@ func toIntSlice(ptr *[]int) StoreFunc {
 		return nil
 	}
 }
+
+func toBoolSlice(ptr *[]bool) StoreFunc {
+	strListToBoolList := func(slice []string) ([]bool, error) {
+		var r []bool
+		for _, item := range slice {
+			b, err := strconv.ParseBool(strings.TrimSpace(item))
+			if err != nil {
+				return nil, fmt.Errorf("as an boolean '%s' in slice %s", item, err)
+			}
+			r = append(r, b)
+		}
+		return r, nil
+	}
+
+	return func(value interface{}, count int) error {
+		switch t := value.(type) {
+		case string:
+			r, err := strListToBoolList(strings.Split(t, ","))
+			if err != nil {
+				return err
+			}
+			*ptr = r
+		case []string:
+			r, err := strListToBoolList(t)
+			if err != nil {
+				return err
+			}
+			*ptr = r
+		}
+		return nil
+	}
+}
