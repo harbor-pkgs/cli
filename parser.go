@@ -22,6 +22,9 @@ const (
 	defaultSource = "cli-default"
 )
 
+// This is just so Add() won't complain we didn't provide a 'IsSet' for our auto added Help flag
+var hasHelp bool
+
 type Mode int64
 
 const (
@@ -173,6 +176,7 @@ func (p *Parser) Parse(ctx context.Context, argv []string) (int, error) {
 				Help:     "display this help message and exit",
 				Name:     "help",
 				HelpFlag: true,
+				IsSet:    &hasHelp,
 				Aliases:  []string{"h"},
 			})
 		}
@@ -185,8 +189,9 @@ func (p *Parser) Parse(ctx context.Context, argv []string) (int, error) {
 		return ErrorRetCode, err
 	}
 
+	// TODO: Sorting the rules might not matter anymore, don't forget to remove the sort methods on rules
 	// Sort the rules so argument/command rules are evaluated last
-	sort.Sort(p.rules)
+	//sort.Sort(p.rules)
 
 	// Sort the aliases such that we evaluate longer alias names first
 	for _, r := range p.rules {

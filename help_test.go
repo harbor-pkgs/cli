@@ -10,9 +10,10 @@ import (
 )
 
 func TestHelpMessage(t *testing.T) {
-	var bar, foo, argOne, argTwo, envOne string
-	var hasFlag, hasEnv bool
+	var foo, argOne, argTwo, envOne string
+	var hasFlag, hasEnv, isTrue bool
 	var envTwo []string
+	var bar int
 
 	p := cli.New(&cli.Config{
 		Name:   "test",
@@ -28,7 +29,8 @@ func TestHelpMessage(t *testing.T) {
 	p.Add(
 		&cli.Flag{Name: "flag", IsSet: &hasFlag, Help: "this is my flag"},
 		&cli.Flag{Name: "foo", Store: &foo, Aliases: []string{"f"}, Help: "used to store bars"},
-		&cli.Flag{Name: "bar", Store: &bar, Help: "used to store foos"},
+		&cli.Flag{Name: "bar", Store: &bar, Help: "used to store number of foo's"},
+		&cli.Flag{Name: "true", Store: &isTrue, Help: "is very true"},
 	)
 
 	p.Add(
@@ -64,20 +66,21 @@ func TestHelpMessage(t *testing.T) {
 	compare("  arg-two   this argument is optional")
 	compare("")
 	compare("Flags:")
-	compare("  -flag               this is my flag")
-	compare("  -foo, -f <string>   used to store bars")
-	compare("  -bar <string>       used to store foos")
-	compare("  -help, -h           display this help message and exit")
+	compare("  --flag               this is my flag")
+	compare("  --foo, -f <string>   used to store bars")
+	compare("  --bar <int>          used to store number of foo's")
+	compare("  --true <bool>        is very true")
+	compare("  --help, -h           display this help message and exit")
 	compare("")
 	compare("Environment Variables:")
+	compare("  ENV_ONE <string>      this is env one, it holds 1 thing")
+	compare("  ENV_TWO <str>,<str>   this is env one, it holds a comma separate list of 2 things")
 	compare("")
 	compare("Copyright 2018 By Derrick J. Wippler")
-
-	// TODO: Test Usage when EnvVar are used
 }
 
 func TestGenerateEnvConfig(t *testing.T) {
-	var bar, foo string
+	var bar, foo, thing string
 	var endpoints []string
 	var count int
 
@@ -90,6 +93,9 @@ func TestGenerateEnvConfig(t *testing.T) {
 	p.Add(&cli.EnvVar{Name: "endpoints", Env: "ENDPOINTS", Store: &endpoints,
 		Help: "A comma separated list of endpoints our application can connect too"})
 
+	p.Add(&cli.Flag{Name: "thing", Env: "THE_THING", Store: &thing, Default: "Let's call it a thingamajig",
+		Help: "This is a rather simple thing"})
+
 	// Given
 	retCode, err := p.Parse(nil, []string{})
 
@@ -97,7 +103,7 @@ func TestGenerateEnvConfig(t *testing.T) {
 	require.Nil(t, err)
 	require.Equal(t, 0, retCode)
 
-	config := p.GenerateEnvConfig()
+	config := string(p.GenerateEnvConfig())
 	fmt.Println(config)
 
 	lines := strings.Split(config, "\n")
@@ -108,17 +114,19 @@ func TestGenerateEnvConfig(t *testing.T) {
 		i++
 	}
 
-	compare(`# A bar to put beer into, with extra hops`)
-	compare(`BAR=`)
-	compare(``)
-	compare(`# The number of things to come`)
-	compare(`# Default: "1"`)
-	compare(`COUNT=`)
-	compare(``)
-	compare(`# A comma separated list of endpoints our application can connect too`)
-	compare(`ENDPOINTS=`)
-	compare(``)
-	compare(`# Lorem ipsum dolor sit amet, consect etura dipiscing elit, sed do eiusmod tempor incididunt ut`)
-	compare(`# labore etmollit anim id est laborum.`)
-	compare(`FOO=`)
+	compare("# A bar to put beer into, with extra hops")
+	compare("# export BAR=<string>")
+	compare("")
+	compare("# Lorem ipsum dolor sit amet, consect etura dipiscing elit, sed do eiusmod tempor incididunt ut")
+	compare("# labore etmollit anim id est laborum.")
+	compare("# export FOO=<string>")
+	compare("")
+	compare(`# The number of things to come (Default:"1")`)
+	compare("# export COUNT=<int>")
+	compare("")
+	compare("# A comma separated list of endpoints our application can connect too")
+	compare("# export ENDPOINTS=<str>,<str>")
+	compare("")
+	compare(`# This is a rather simple thing (Default:"Let's call it a thingamajig")`)
+	compare("# export THE_THING=<string>")
 }

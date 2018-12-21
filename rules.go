@@ -34,6 +34,7 @@ func (r ruleList) String() string {
 	return strings.Join(lines, "\n")
 }
 
+// TODO: Consider removing this
 func (r *ruleList) SortRulesWithFlag(flag ruleFlag) ruleList {
 	var results ruleList
 

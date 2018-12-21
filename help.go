@@ -6,6 +6,22 @@ import (
 	"strings"
 )
 
+// Returns a string that contains documentation for each flag, argument and envvar provided
+// which is suitable for display to the user as your applications help message.
+//
+//   Usage: test [flags]  <arg-one> [arg-two]
+//
+//   This is the description of the application
+//
+//   Arguments:
+//     arg-one   this is a required argument
+//     arg-two   this argument is optional
+//
+//   Flags:
+//     --help, -h           display this help message and exit
+//     --flag               this is my flag
+//     --foo, -f <string>   used to store bars
+//     --bar <int>          used to store number of foo's
 func (p *Parser) GenerateHelp() string {
 	var result bytes.Buffer
 	if p.cfg.Usage != "" {
@@ -42,7 +58,7 @@ func (p *Parser) GenerateHelp() string {
 
 	envVars := p.generateHelpSection(isEnvVar)
 	if options != "" {
-		result.WriteString("\nEnvironment Vars:\n")
+		result.WriteString("\nEnvironment Variables:\n")
 		result.WriteString(envVars)
 	}
 
@@ -52,21 +68,37 @@ func (p *Parser) GenerateHelp() string {
 	return result.String()
 }
 
-// TODO: Document this method
-func (p *Parser) GenerateEnvConfig() string {
+// Returns a byte array that contains each environment variable name provided by 'Env' with
+// documentation and type signature. This is suitable for generating an example env file for
+// users of your app.
+//
+//   # The count of things to come (Default:"1")
+//   # export COUNT=<int>
+//
+//   # A comma separated list of endpoints our application can connect too
+//   # export ENDPOINTS=<str>,<str>
+func (p *Parser) GenerateEnvConfig() []byte {
+	// TODO: Create a method like this that creates an example INI file
 	var result bytes.Buffer
 
-	for _, rule := range p.rules.SortRulesWithFlag(isEnvVar) {
-		if rule.HelpMsg != "" {
-			for _, line := range strings.Split(WordWrap(rule.HelpMsg, 0, p.cfg.WordWrap), "\n") {
-				result.WriteString("# " + line + "\n")
-			}
+	for _, rule := range p.rules {
+		if rule.HelpMsg == "" || rule.EnvVar == "" {
+			continue
 		}
-		result.WriteString(rule.GenerateEnvUsage())
-		result.WriteString(rule.EnvVar + "=\n\n")
-	}
 
-	return result.String()
+		// Append the default value to the end of the help string
+		helpMsg := rule.HelpMsg
+		if rule.Default != nil {
+			helpMsg += ` (Default:"` + *rule.Default + `")`
+		}
+
+		// Word wrap the help string
+		for _, line := range strings.Split(WordWrap(helpMsg, 0, p.cfg.WordWrap), "\n") {
+			result.WriteString("# " + line + "\n")
+		}
+		result.WriteString("# " + rule.GenerateEnvUsage() + "\n\n")
+	}
+	return result.Bytes()
 }
 
 func (p *Parser) generateUsage(flags ruleFlag) string {

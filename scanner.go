@@ -54,7 +54,6 @@ func scanArgv(p *Parser) (*linearSyntax, error) {
 	return s.syntax, nil
 }
 
-
 func (s *scanner) scanFlags(argPos int) error {
 	if len(s.argv) == argPos {
 		fmt.Println("no more args to scan")
@@ -102,7 +101,6 @@ func (s *scanner) scanArgs() {
 		}
 	}
 }
-
 
 func (s *scanner) scanFlag(argPos, charPos int, allowCombinedFlags bool) error {
 	// sanity check

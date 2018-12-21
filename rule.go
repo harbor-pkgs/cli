@@ -18,6 +18,7 @@ type ruleFlag int64
 
 // TODO: Make these flags private
 const (
+	allFlags  ruleFlag = 0xFFFFFFFF
 	isCommand ruleFlag = 1 << iota
 	isArgument
 	isRequired
@@ -28,9 +29,16 @@ const (
 	isHidden
 	hasCount
 	isHelpRule
+
+	// Type flags
 	isList
 	isMap
 	isScalar
+
+	// Kind flags
+	isString
+	isInt
+	isBool
 )
 
 type rule struct {
@@ -87,25 +95,42 @@ func (r *rule) GenerateUsage() string {
 }
 
 func (r *rule) GenerateEnvUsage() string {
-	//result := "# Type: " + r.ValueTypeString()
-	if r.Default != nil {
-		return `# Default: "` + *r.Default + `"` + "\n"
-	}
-	return ""
+	return "export " + r.EnvVar + "=" + r.TypeUsage()
 }
 
 func (r *rule) TypeUsage() string {
-	// TODO: Should return the actual kind in addition to the value type
-	// IE: <int> or <int>,<int> etc...
 	switch {
 	case r.HasFlag(isScalar):
-		return "<string>"
+		switch {
+		case r.HasFlag(isString):
+			return "<string>"
+		case r.HasFlag(isBool):
+			return "<bool>"
+		case r.HasFlag(isInt):
+			return "<int>"
+		default:
+			return "<unknown>"
+		}
 	case r.HasFlag(isList):
-		return "<s1>,<s2>"
+		switch {
+		case r.HasFlag(isString):
+			return "<str>,<str>"
+		case r.HasFlag(isBool):
+			return "<bool>,<bool>"
+		case r.HasFlag(isInt):
+			return "<int>,<int>"
+		default:
+			return "<unknown>,<unknown>"
+		}
 	case r.HasFlag(isMap):
-		return "<key>=<value>"
+		switch {
+		case r.HasFlag(isString):
+			return "<key>=<string>"
+		default:
+			return "<key>=<unknown>"
+		}
 	}
-	return "<unknown-value-type>"
+	return "<unknown>"
 }
 
 func (r *rule) GenerateHelp() (string, string) {
@@ -126,7 +151,7 @@ func (r *rule) GenerateHelp() (string, string) {
 
 	var valueType string
 	// if the option expects a value optionally display this depending on type
-	// TODO: Allow the user to override this?
+	// TODO: Allow the user to override this when custom type provides Get() interface
 	if r.HasFlag(isFlag) && r.HasFlag(isExpectingValue) {
 		valueType = " " + r.TypeUsage()
 	}
@@ -136,12 +161,16 @@ func (r *rule) GenerateHelp() (string, string) {
 	}
 
 	if r.HasFlag(isEnvVar) {
-		return "  " + r.Name + " " + r.TypeUsage() , r.HelpMsg
+		return "  " + r.Name + " " + r.TypeUsage(), r.HelpMsg
 	}
 
 	var flags []string
 	for _, flag := range r.Aliases {
-		flags = append(flags, fmt.Sprintf("-%s", flag))
+		if len(flag) > 2 {
+			flags = append(flags, fmt.Sprintf("--%s", flag))
+		} else {
+			flags = append(flags, fmt.Sprintf("-%s", flag))
+		}
 	}
 
 	return "  " + strings.Join(flags, ", ") + valueType, r.HelpMsg + paren

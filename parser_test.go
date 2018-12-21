@@ -1,13 +1,13 @@
 package cli_test
 
 import (
+	"os"
 	"sort"
 	"testing"
 
 	"github.com/harbor-pkgs/cli"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
-	"os"
 )
 
 func TestParserNoRules(t *testing.T) {
@@ -18,9 +18,32 @@ func TestParserNoRules(t *testing.T) {
 	assert.Equal(t, "no flags or arguments defined; call Add() before calling Parse()", err.Error())
 }
 
+func TestParserNoStore(t *testing.T) {
+	tests := []struct {
+		v   cli.Variant
+		err string
+	}{
+		{v: &cli.Flag{Name: "foo"}, err: "refusing to add flag 'foo'; provide an 'IsSet', 'Store' or 'Count' field"},
+		{v: &cli.Argument{Name: "foo"}, err: "refusing to add argument 'foo'; provide an 'IsSet', 'Store' or 'Count' field"},
+		{v: &cli.EnvVar{Name: "foo"}, err: "refusing to add envvar 'foo'; provide an 'IsSet' or 'Store' field"},
+	}
+
+	for _, test := range tests {
+		p := cli.New(nil)
+		p.Add(test.v)
+		retCode, err := p.Parse(nil, nil)
+
+		// Then
+		assert.NotNil(t, err)
+		assert.Equal(t, cli.ErrorRetCode, retCode)
+		assert.Contains(t, err.Error(), test.err)
+	}
+}
+
 func TestParserAddHelpWithFlag(t *testing.T) {
+	var hasFlag bool
 	p := cli.New(nil)
-	p.Add(&cli.Flag{Name: "foo"})
+	p.Add(&cli.Flag{Name: "foo", IsSet: &hasFlag})
 
 	// Given -h
 	retCode, err := p.Parse(nil, []string{"-h"})
@@ -446,4 +469,3 @@ func TestInvalidAliases(t *testing.T) {
 // TODO: Test CanRepeat post and prefix  cp <src> <src> <dst>
 // TODO: sub command usage should include <command> in usage line
 // TODO: Test for flags that start with or contain a number -v3  -2Knds
-

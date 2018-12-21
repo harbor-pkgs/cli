@@ -23,9 +23,9 @@ type Flag struct {
 	DependsOn string
 	Hidden    bool
 
-	Store       interface{}
-	Count       *int
-	IsSet       *bool
+	Store interface{}
+	Count *int
+	IsSet *bool
 }
 
 func (f *Flag) name() string {
@@ -70,6 +70,10 @@ func (f *Flag) toRule() (*rule, error) {
 	}
 	if f.IsSet != nil {
 		r.StoreFuncs = append(r.StoreFuncs, toSet(f.IsSet))
+	}
+
+	if f.IsSet == nil && f.Store == nil && f.Count == nil {
+		return nil, fmt.Errorf("refusing to add flag '%s'; provide an 'IsSet', 'Store' or 'Count' field", f.Name)
 	}
 	return r, nil
 }
@@ -126,6 +130,10 @@ func (a *Argument) toRule() (*rule, error) {
 		r.StoreFuncs = append(r.StoreFuncs, toSet(a.IsSet))
 	}
 
+	if a.IsSet == nil && a.Store == nil && a.Count == nil {
+		return nil, fmt.Errorf("refusing to add argument '%s'; provide an 'IsSet', 'Store' or 'Count' field", a.Name)
+	}
+
 	return r, nil
 }
 
@@ -179,6 +187,10 @@ func (e *EnvVar) toRule() (*rule, error) {
 		r.StoreFuncs = append(r.StoreFuncs, toSet(e.IsSet))
 	}
 
+	if e.IsSet == nil && e.Store == nil {
+		return nil, fmt.Errorf("refusing to add envvar '%s'; provide an 'IsSet' or 'Store' field", e.Name)
+	}
+
 	return r, nil
 }
 
@@ -191,11 +203,12 @@ func newStoreFunc(dest interface{}) (StoreFunc, ruleFlag, error) {
 	switch d.Kind() {
 	case reflect.Array, reflect.Slice:
 		elem := reflect.TypeOf(dest).Elem().Elem()
+		// TODO: Support []bool
 		switch elem.Kind() {
 		case reflect.Int:
-			return toIntSlice(dest.(*[]int)), isList, nil
+			return toIntSlice(dest.(*[]int)), isList | isInt, nil
 		case reflect.String:
-			return toStringSlice(dest.(*[]string)), isList, nil
+			return toStringSlice(dest.(*[]string)), isList | isString, nil
 		default:
 			return nil, isList, fmt.Errorf("slice of type '%s' is not supported", elem.Kind())
 		}
@@ -203,16 +216,17 @@ func newStoreFunc(dest interface{}) (StoreFunc, ruleFlag, error) {
 		key := d.Type().Key()
 		elem := d.Type().Elem()
 		if key.Kind() == reflect.String && elem.Kind() == reflect.String {
-			return toStringMap(dest.(*map[string]string)), isMap, nil
+			return toStringMap(dest.(*map[string]string)), isMap | isString, nil
 		}
+		// TODO: Support map of int and bool
 		return nil, isMap, fmt.Errorf("cannot use 'map[%s]%s'; only "+
 			"'map[string]string' supported", key.Kind(), elem.Kind())
 	case reflect.String:
-		return toString(dest.(*string)), isScalar, nil
+		return toString(dest.(*string)), isScalar | isString, nil
 	case reflect.Bool:
-		return toBool(dest.(*bool)), isScalar, nil
+		return toBool(dest.(*bool)), isScalar | isBool, nil
 	case reflect.Int:
-		return toInt(dest.(*int)), isScalar, nil
+		return toInt(dest.(*int)), isScalar | isInt, nil
 	case reflect.Uint, reflect.Uint8, reflect.Uint16, reflect.Uint32, reflect.Uint64, reflect.Uintptr, reflect.Float32,
 		reflect.Float64, reflect.Interface, reflect.Ptr, reflect.Int8, reflect.Int16, reflect.Int32, reflect.Int64:
 		return nil, isScalar, fmt.Errorf("cannot use '%s'; type not supported", d.Kind())
@@ -246,11 +260,13 @@ func (p *Parser) Add(variants ...Variant) {
 			p.errs = append(p.errs, fmt.Errorf("%s:%d - %s", file, line, err))
 			return
 		}
+		rule.Sequence = p.seqCount
+		p.seqCount++
 
-		// Only arguments and commands get sequences
-		if !rule.HasFlag(isFlag) {
-			rule.Sequence = p.seqCount
-			p.seqCount++
+		// Ensure arguments and commands are at the bottom of the rules when sorted by sequence
+		// TODO: Sorting the rules might not matter anymore, find out
+		if rule.HasFlag(isArgument | isCommand) {
+			rule.Sequence += 10000
 		}
 
 		fmt.Printf("Add(%s)\n", rule.Name)
