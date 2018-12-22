@@ -9,6 +9,7 @@ import (
 	"reflect"
 	"regexp"
 	"strings"
+	"strconv"
 )
 
 type ErrorFunc func(string)
@@ -48,10 +49,44 @@ func StringToSlice(value string, modifiers ...func(s string) string) []string {
 	return result
 }
 
+func ToIntMap(value string) (map[string]int ,error) {
+	strMap, err := ToStringMap(value)
+	if err != nil {
+		return nil, err
+	}
+
+	result := make(map[string]int, len(strMap))
+	for k, v := range strMap {
+		i, err := strconv.ParseInt(v, 10, 32)
+		if err != nil {
+			return nil, fmt.Errorf("'%s' is not an integer", v)
+		}
+		result[k] = int(i)
+	}
+	return result, nil
+}
+
+func ToBoolMap(value string) (map[string]bool ,error) {
+	strMap, err := ToStringMap(value)
+	if err != nil {
+		return nil, err
+	}
+
+	result := make(map[string]bool, len(strMap))
+	for k, v := range strMap {
+		b, err := strconv.ParseBool(v)
+		if err != nil {
+			return nil, fmt.Errorf("'%s' is not a boolean", v)
+		}
+		result[k] = b
+	}
+	return result, nil
+}
+
 // Given a comma separated string of key values in the form `key=value`.
 // Return a map of key values as strings, Also excepts JSON for more complex
 // quoted or escaped data.
-func StringToMap(value string) (map[string]string, error) {
+func ToStringMap(value string) (map[string]string, error) {
 	tokenizer := newKeyValueTokenizer(value)
 	result := make(map[string]string)
 
@@ -64,7 +99,7 @@ func StringToMap(value string) (map[string]string, error) {
 		}
 		if strings.HasPrefix(lvalue, "{") {
 			// Assume this is JSON format and attempt to un-marshal
-			return jsonToMap(value)
+			return jsonToStringMap(value)
 		}
 
 		expression = tokenizer.Next()
@@ -196,7 +231,7 @@ func IsCharDevice(file *os.File) bool {
 	return (stat.Mode() & os.ModeCharDevice) == 0
 }
 
-func jsonToMap(value string) (map[string]string, error) {
+func jsonToStringMap(value string) (map[string]string, error) {
 	result := make(map[string]string)
 	err := json.Unmarshal([]byte(value), &result)
 	if err != nil {

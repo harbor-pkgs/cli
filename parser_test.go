@@ -40,21 +40,6 @@ func TestParserNoStore(t *testing.T) {
 	}
 }
 
-func TestInvalidStoreType(t *testing.T) {
-	var foo int64
-
-	p := cli.New(nil)
-	p.Add(&cli.Flag{Name: "foo", Store: &foo, Aliases: []string{"f"}})
-
-	// Given
-	retCode, err := p.Parse(nil, []string{})
-
-	// Then
-	assert.NotNil(t, err)
-	assert.Equal(t, cli.ErrorRetCode, retCode)
-	assert.Contains(t, err.Error(), "invalid 'Store' while adding flag 'foo': cannot store 'int64'; type not supported")
-}
-
 func TestParserAddHelpWithFlag(t *testing.T) {
 	var hasFlag bool
 	p := cli.New(nil)
@@ -86,71 +71,6 @@ func TestParserNoArgs(t *testing.T) {
 	assert.Nil(t, err)
 	assert.Equal(t, 0, retCode)
 	assert.Equal(t, "", foo)
-}
-
-func TestFlagDefaultScalar(t *testing.T) {
-	var foo string
-	p := cli.New(nil)
-	p.Add(&cli.Flag{Name: "foo", Store: &foo, Default: "bash"})
-
-	// Given no value
-	retCode, err := p.Parse(nil, []string{})
-
-	// Then
-	assert.Nil(t, err)
-	assert.Equal(t, 0, retCode)
-	assert.Equal(t, "bash", foo)
-
-	// Given a value
-	retCode, err = p.Parse(nil, []string{"--foo", "bar"})
-
-	// Then
-	assert.Nil(t, err)
-	assert.Equal(t, 0, retCode)
-	assert.Equal(t, "bar", foo)
-}
-
-func TestFlagDefaultList(t *testing.T) {
-	var foo []string
-	p := cli.New(nil)
-	p.Add(&cli.Flag{Name: "foo", Store: &foo, Default: "bash,bar,foo"})
-
-	// Given no value
-	retCode, err := p.Parse(nil, []string{})
-
-	// Then
-	assert.Nil(t, err)
-	assert.Equal(t, 0, retCode)
-	sort.Strings(foo)
-	assert.Equal(t, []string{"bar", "bash", "foo"}, foo)
-
-	// Given a value
-	retCode, err = p.Parse(nil, []string{"--foo", "bar"})
-
-	// Then
-	assert.Nil(t, err)
-	assert.Equal(t, 0, retCode)
-	assert.Equal(t, []string{"bar"}, foo)
-}
-
-func TestFlagDefaultMap(t *testing.T) {
-	var foo map[string]string
-	var count int
-
-	p := cli.New(nil)
-	p.Add(&cli.Flag{Name: "foo", Store: &foo, Default: "bar=foo,foo=bar"})
-
-	// Given
-	retCode, err := p.Parse(nil, []string{})
-
-	// Then
-	assert.Nil(t, err)
-	assert.Equal(t, 0, retCode)
-	assert.Equal(t, 0, count)
-	require.Contains(t, foo, "bar")
-	require.Contains(t, foo, "foo")
-	assert.Equal(t, foo["bar"], "foo")
-	assert.Equal(t, foo["foo"], "bar")
 }
 
 func TestFooFlag(t *testing.T) {
@@ -239,87 +159,6 @@ func TestFlagIsRequired(t *testing.T) {
 	assert.Equal(t, "flag '--foo' is required", err.Error())
 }
 
-func TestFlagWithBoolSlice(t *testing.T) {
-	var foo []bool
-	var count int
-
-	p := cli.New(nil)
-	// Count implies 'CanRepeat=true'
-	p.Add(&cli.Flag{Name: "foo", Store: &foo, Count: &count, Aliases: []string{"f"}})
-
-	// Given
-	retCode, err := p.Parse(nil, []string{"--foo", "true", "-f", "false", "-f", "true"})
-
-	// Then
-	assert.Nil(t, err)
-	assert.Equal(t, 0, retCode)
-	assert.Equal(t, 3, count)
-	assert.Equal(t, []bool{true, false, true}, foo)
-}
-
-func TestFlagWithSlice(t *testing.T) {
-	var foo []string
-	// TODO: Test array with 'Store' instead of slice 'var bar [2]string'
-	var count int
-
-	p := cli.New(nil)
-	// Count implies 'CanRepeat=true'
-	p.Add(&cli.Flag{Name: "foo", Store: &foo, Count: &count, Aliases: []string{"f"}})
-
-	// Given
-	retCode, err := p.Parse(nil, []string{"--foo", "bar,bang", "-f", "foo"})
-
-	// Then
-	assert.Nil(t, err)
-	assert.Equal(t, 0, retCode)
-	assert.Equal(t, 2, count)
-	//sort.Strings(foo) TODO: Remove
-	assert.Equal(t, []string{"bar,bang", "foo"}, foo)
-}
-
-func TestFlagWithMap(t *testing.T) {
-	var foo map[string]string
-	var count int
-
-	p := cli.New(nil)
-	// Count implies 'CanRepeat=true'
-	p.Add(&cli.Flag{Name: "foo", Store: &foo, Count: &count, Aliases: []string{"f"}})
-
-	// Given
-	retCode, err := p.Parse(nil, []string{"--foo", "bar=foo", "-f", "foo=bar"})
-
-	// Then
-	assert.Nil(t, err)
-	assert.Equal(t, 0, retCode)
-	assert.Equal(t, 2, count)
-	require.Contains(t, foo, "bar")
-	require.Contains(t, foo, "foo")
-	assert.Equal(t, foo["bar"], "foo")
-	assert.Equal(t, foo["foo"], "bar")
-}
-
-func TestFlagWithMapAndJSON(t *testing.T) {
-	var foo map[string]string
-	var count int
-
-	p := cli.New(nil)
-	// Count implies 'CanRepeat=true'
-	p.Add(&cli.Flag{Name: "foo", Store: &foo, Count: &count, Aliases: []string{"f"}})
-
-	// Given
-	retCode, err := p.Parse(nil, []string{"--foo", `{"bar":"foo"}`, "-f", `{"foo": "bar", "bash": "bang"}`})
-
-	// Then
-	assert.Nil(t, err)
-	assert.Equal(t, 0, retCode)
-	assert.Equal(t, 2, count)
-	require.Contains(t, foo, "bar")
-	require.Contains(t, foo, "foo")
-	require.Contains(t, foo, "bash")
-	assert.Equal(t, foo["bar"], "foo")
-	assert.Equal(t, foo["foo"], "bar")
-	assert.Equal(t, foo["bash"], "bang")
-}
 
 func TestFlagReplace(t *testing.T) {
 	var count int

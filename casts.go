@@ -13,7 +13,7 @@ func toInt(ptr *int) StoreFunc {
 		case string:
 			i, err := strconv.ParseInt(t, 10, 32)
 			if err != nil {
-				return fmt.Errorf("as an integer: %s", err)
+				return fmt.Errorf("'%s' is not an integer", t)
 			}
 			*ptr = int(i)
 			return nil
@@ -41,7 +41,7 @@ func toBool(ptr *bool) StoreFunc {
 		case string:
 			b, err := strconv.ParseBool(t)
 			if err != nil {
-				return fmt.Errorf("as a boolean: %s", err)
+				return fmt.Errorf("'%s' is not a boolean", t)
 			}
 			*ptr = b
 		case []string, map[string]string:
@@ -97,12 +97,62 @@ func toStringMap(ptr *map[string]string) StoreFunc {
 		var err error
 		switch t := value.(type) {
 		case string:
-			*ptr, err = StringToMap(t)
+			*ptr, err = ToStringMap(t)
 			if err != nil {
 				return err
 			}
 		case map[string]string:
 			*ptr = t
+		}
+		return nil
+	}
+}
+
+func toIntMap(ptr *map[string]int) StoreFunc {
+	return func(value interface{}, count int) error {
+		var err error
+		switch t := value.(type) {
+		case string:
+			*ptr, err = ToIntMap(t)
+			if err != nil {
+				return err
+			}
+		case map[string]string:
+			strMap := value.(map[string]string)
+			result := make(map[string]int, len(strMap))
+			for k, v := range strMap {
+				i, err := strconv.ParseInt(strings.TrimSpace(v), 10, 32)
+				if err != nil {
+					return fmt.Errorf("'%s' is not an integer", v)
+				}
+				result[k] = int(i)
+			}
+			*ptr = result
+		}
+		return nil
+	}
+}
+
+func toBoolMap(ptr *map[string]bool) StoreFunc {
+	return func(value interface{}, count int) error {
+		var err error
+		switch t := value.(type) {
+		case string:
+			*ptr, err = ToBoolMap(t)
+			if err != nil {
+				return err
+			}
+		case map[string]string:
+			strMap := value.(map[string]string)
+			result := make(map[string]bool, len(strMap))
+			for k, v := range strMap {
+				b, err := strconv.ParseBool(strings.TrimSpace(v))
+				if err != nil {
+					return fmt.Errorf("'%s' is not a boolean", v)
+				}
+				result[k] = b
+			}
+			*ptr = result
 		}
 		return nil
 	}
@@ -114,7 +164,7 @@ func toIntSlice(ptr *[]int) StoreFunc {
 		for _, item := range slice {
 			i, err := strconv.ParseInt(strings.TrimSpace(item), 10, 32)
 			if err != nil {
-				return nil, fmt.Errorf("as an integer '%s' in slice %s", item, err)
+				return nil, fmt.Errorf("'%s' is not an integer", item)
 			}
 			r = append(r, int(i))
 		}
@@ -146,7 +196,7 @@ func toBoolSlice(ptr *[]bool) StoreFunc {
 		for _, item := range slice {
 			b, err := strconv.ParseBool(strings.TrimSpace(item))
 			if err != nil {
-				return nil, fmt.Errorf("as an boolean '%s' in slice %s", item, err)
+				return nil, fmt.Errorf("'%s' is not a boolean", item)
 			}
 			r = append(r, b)
 		}

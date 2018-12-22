@@ -115,7 +115,7 @@ func (kv *KVStore) Get(ctx context.Context, key string, vt ValueType) (interface
 		// either in the form `key=value` or `{"key": "value"}`
 		r := make(map[string]string)
 		for _, value := range values {
-			kv, err := StringToMap(value)
+			kv, err := ToStringMap(value)
 			if err != nil {
 				return nil, 0, fmt.Errorf("during KVStore.Get() map conversion: %s", err)
 			}

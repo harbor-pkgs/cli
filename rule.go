@@ -72,7 +72,7 @@ func (r *rule) SetFlag(flag ruleFlag, set bool) {
 func (r *rule) StoreValue(value interface{}, count int) error {
 	for _, f := range r.StoreFuncs {
 		if err := f(value, count); err != nil {
-			return fmt.Errorf("while storing '%s' %s", value, err)
+			return err
 		}
 	}
 	return nil

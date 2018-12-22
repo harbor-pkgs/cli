@@ -43,7 +43,7 @@ func (e *envStore) Get(ctx context.Context, name string, valueType ValueType) (i
 		r := StringToSlice(value, strings.TrimSpace)
 		return r, len(r), nil
 	case MapType:
-		r, err := StringToMap(value)
+		r, err := ToStringMap(value)
 		if err != nil {
 			return r, len(r), nil
 		}

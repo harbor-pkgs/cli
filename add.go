@@ -194,6 +194,7 @@ func (e *EnvVar) toRule() (*rule, error) {
 	return r, nil
 }
 
+// TODO: Support the 'Set()' interface similar to go flags
 func newStoreFunc(dest interface{}) (StoreFunc, ruleFlag, error) {
 	d := reflect.ValueOf(dest)
 	if d.Kind() != reflect.Ptr {
@@ -225,9 +226,14 @@ func newStoreFunc(dest interface{}) (StoreFunc, ruleFlag, error) {
 		if key.Kind() == reflect.String && elem.Kind() == reflect.String {
 			return toStringMap(dest.(*map[string]string)), isMap | isString, nil
 		}
-		// TODO: Support map of int and bool
+		if key.Kind() == reflect.String && elem.Kind() == reflect.Int {
+			return toIntMap(dest.(*map[string]int)), isMap | isInt, nil
+		}
+		if key.Kind() == reflect.String && elem.Kind() == reflect.Bool {
+			return toBoolMap(dest.(*map[string]bool)), isMap | isBool, nil
+		}
 		return nil, isMap, fmt.Errorf("cannot use 'map[%s]%s'; only "+
-			"'map[string]string' supported", key.Kind(), elem.Kind())
+			"'map[string]string, map[string]int, map[string]bool' currently supported", key.Kind(), elem.Kind())
 
 	case reflect.String:
 		return toString(dest.(*string)), isScalar | isString, nil

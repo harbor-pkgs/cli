@@ -305,7 +305,9 @@ func (p *Parser) validateAndStore(rs *resultStore) (int, error) {
 		}
 
 		fmt.Printf("Store(%v,%d)\n", value, count)
-		rule.StoreValue(value, count)
+		if err = rule.StoreValue(value, count); err != nil {
+			return ErrorRetCode, fmt.Errorf("invalid value for %s '%s': %s", rule.Type(), rule.Name, err)
+		}
 	}
 	return 0, nil
 }

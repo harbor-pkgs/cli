@@ -15,21 +15,21 @@ import (
 )
 
 func TestStringToMapWithAlpha(t *testing.T) {
-	strMap, err := cli.StringToMap("http.ip=192.168.1.1")
+	strMap, err := cli.ToStringMap("http.ip=192.168.1.1")
 	require.Nil(t, err)
 	assert.Contains(t, strMap, "http.ip")
 	assert.Equal(t, strMap["http.ip"], "192.168.1.1")
 }
 
 func TestStringToMapWithEscape(t *testing.T) {
-	strMap, err := cli.StringToMap(`http\=ip=192.168.1.1`)
+	strMap, err := cli.ToStringMap(`http\=ip=192.168.1.1`)
 	require.Nil(t, err)
 	assert.Contains(t, strMap, "http=ip")
 	assert.Equal(t, strMap["http=ip"], "192.168.1.1")
 }
 
 func TestStringToMapWithCommas(t *testing.T) {
-	strMap, err := cli.StringToMap("foo=bar,bar=foo")
+	strMap, err := cli.ToStringMap("foo=bar,bar=foo")
 	require.Nil(t, err)
 	assert.Contains(t, strMap, "foo")
 	assert.Contains(t, strMap, "bar")
@@ -38,25 +38,25 @@ func TestStringToMapWithCommas(t *testing.T) {
 }
 
 func TestStringToMapMalformed(t *testing.T) {
-	_, err := cli.StringToMap("foo")
+	_, err := cli.ToStringMap("foo")
 	require.NotNil(t, err)
 	assert.Equal(t, "expected '=' after 'foo' but found ''; map values should be 'key=value' separated by commas", err.Error())
 
-	_, err = cli.StringToMap(",")
+	_, err = cli.ToStringMap(",")
 	require.NotNil(t, err)
 	assert.Equal(t, "expected '=' after ',' but found ''; map values should be 'key=value' separated by commas", err.Error())
 
-	_, err = cli.StringToMap("=")
+	_, err = cli.ToStringMap("=")
 	require.NotNil(t, err)
 	assert.Equal(t, "expected '=' after '=' but found ''; map values should be 'key=value' separated by commas", err.Error())
 
-	_, err = cli.StringToMap("=,")
+	_, err = cli.ToStringMap("=,")
 	require.NotNil(t, err)
 	assert.Equal(t, "expected '=' after '=' but found ','; map values should be 'key=value' separated by commas", err.Error())
 }
 
 func TestStringToMapWithJSON(t *testing.T) {
-	strMap, err := cli.StringToMap(`{"belt":"car","table":"cloth"}`)
+	strMap, err := cli.ToStringMap(`{"belt":"car","table":"cloth"}`)
 	require.Nil(t, err)
 	assert.Contains(t, strMap, "belt")
 	assert.Contains(t, strMap, "table")
@@ -65,14 +65,14 @@ func TestStringToMapWithJSON(t *testing.T) {
 }
 
 func TestStringToMapWithEmptyString(t *testing.T) {
-	strMap, err := cli.StringToMap("")
+	strMap, err := cli.ToStringMap("")
 	require.NotNil(t, err)
 	require.Equal(t, len(strMap), 0)
 	require.Equal(t, "expected key at pos '0' but found none; map values should be 'key=value' separated by commas", err.Error())
 }
 
 func TestStringToMapWithNoValue(t *testing.T) {
-	strMap, err := cli.StringToMap("foo=")
+	strMap, err := cli.ToStringMap("foo=")
 	require.NotNil(t, err)
 	require.Equal(t, len(strMap), 0)
 	require.Equal(t, "expected value after '=' but found none; map values should be 'key=value' separated by commas", err.Error())
@@ -170,15 +170,15 @@ func ExampleStringToSlice() {
 
 func ExampleStringToMap() {
 	// Returns map[string]string{"foo": "bar"}
-	fmt.Println(cli.StringToMap("foo=bar"))
+	fmt.Println(cli.ToStringMap("foo=bar"))
 
 	// Returns map[string]string{"foo": "bar", "kit": "kitty kat"}
-	m, _ := cli.StringToMap(`foo=bar,kit="kitty kat"`)
+	m, _ := cli.ToStringMap(`foo=bar,kit="kitty kat"`)
 	fmt.Printf("foo: %s\n", m["foo"])
 	fmt.Printf("kit: %s\n", m["kit"])
 
 	// Returns map[string]string{"foo": "bar", "kit": "kitty kat"}
-	m, _ = cli.StringToMap(`{"foo":"bar","kit":"kitty kat"}`)
+	m, _ = cli.ToStringMap(`{"foo":"bar","kit":"kitty kat"}`)
 	fmt.Printf("foo: %s\n", m["foo"])
 	fmt.Printf("kit: %s\n", m["kit"])
 
