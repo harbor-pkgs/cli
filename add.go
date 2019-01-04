@@ -211,11 +211,23 @@ func newStoreFunc(dest interface{}) (StoreFunc, ruleFlag, error) {
 		elem := reflect.TypeOf(dest).Elem().Elem()
 		switch elem.Kind() {
 		case reflect.Int:
-			return toIntSlice(dest.(*[]int)), isList | isInt, nil
+			ref, ok := dest.(*[]int)
+			if !ok {
+				return nil, isList, fmt.Errorf("cannot store array of type int; only slices supported")
+			}
+			return toIntSlice(ref), isList | isInt, nil
 		case reflect.String:
-			return toStringSlice(dest.(*[]string)), isList | isString, nil
+			ref, ok := dest.(*[]string)
+			if !ok {
+				return nil, isList, fmt.Errorf("cannot store array of type string; only slices supported")
+			}
+			return toStringSlice(ref), isList | isString, nil
 		case reflect.Bool:
-			return toBoolSlice(dest.(*[]bool)), isList | isBool, nil
+			ref, ok := dest.(*[]bool)
+			if !ok {
+				return nil, isList, fmt.Errorf("cannot store array of type bool; only slices supported")
+			}
+			return toBoolSlice(ref), isList | isBool, nil
 		default:
 			return nil, isList, fmt.Errorf("slice of type '%s' is not supported", elem.Kind())
 		}

@@ -17,7 +17,6 @@ type CommandFunc func(context.Context, *Parser) (int, error)
 
 type ruleFlag int64
 
-// TODO: Make these flags private
 const (
 	allFlags  ruleFlag = 0xFFFFFFFF
 	isCommand ruleFlag = 1 << iota

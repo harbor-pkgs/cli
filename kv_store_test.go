@@ -111,3 +111,63 @@ func TestFromStore(t *testing.T) {
 	assert.Equal(t, 0, retCode)
 	assert.Equal(t, "foo", bar)
 }
+
+
+var castFile = `
+str=bar
+strSlice=bar,foo,bang
+strMap="bash=bang,bar=foo,bang=bash"
+int=1
+intSlice=1,2,3
+intMap="one=1,two=2,three=3"
+bool=true
+boolSlice=false,true,false
+boolMap="on=true,off=false,yes=no"
+`
+
+/*func TestCastFile(t *testing.T) {
+	var str string
+	var strSlice []string
+	var strMap map[string]string
+	var integer int
+	var intSlice []int
+	var intMap map[string]int
+	var boolean bool
+	var boolSlice []bool
+	var boolMap map[string]bool
+
+	tests := struct {
+		flags []cli.Variant
+	} {
+		flags: []cli.Variant{
+			&cli.Flag{Name: "str", Store: &str},
+			&cli.Flag{Name: "strSlice", Store: &strSlice},
+			&cli.Flag{Name: "strMap", Store: &strMap},
+
+			&cli.Flag{Name: "integer", Store: &integer},
+			&cli.Flag{Name: "intSlice", Store: &intSlice},
+			&cli.Flag{Name: "intMap", Store: &intMap},
+
+			&cli.Flag{Name: "boolean", Store: &boolean},
+			&cli.Flag{Name: "boolSlice", Store: &boolSlice},
+			&cli.Flag{Name: "boolMap", Store: &boolMap},
+		},
+	}
+
+	for _, test := tests {
+		p := cli.New(nil)
+		kv, err := cli.NewKVStore(bytes.NewReader([]byte(scalarFile)))
+		require.Nil(t, err)
+		p.AddStore(kv)
+
+		// Given no value
+		retCode, err := p.Parse(nil, []string{})
+
+		assert.Nil(t, err)
+		assert.Equal(t, 0, retCode)
+		assert.Equal(t, "foo", bar)
+
+	}
+}*/
+
+

@@ -1,26 +1,79 @@
 package cli_test
 
 import (
+	"sort"
 	"testing"
+
 	"github.com/harbor-pkgs/cli"
 	"github.com/stretchr/testify/assert"
-	"sort"
 	"github.com/stretchr/testify/require"
 )
 
 func TestInvalidStoreType(t *testing.T) {
-	var foo int64
+	var integer64 int64
+	var integer int
+	var aInt [2]int
+	var aStr [2]string
+	var aBool [2]bool
 
+	tests := []struct {
+		flag *cli.Flag
+		err string
+	} {
+		{
+			flag: &cli.Flag{Name: "foo", Store: &integer64},
+			err:  "invalid 'Store' while adding flag 'foo': cannot store 'int64'; type not supported",
+		},
+		{
+			flag: &cli.Flag{Name: "foo", Store: integer},
+			err:  "invalid 'Store' while adding flag 'foo': cannot use non pointer type 'int'; must provide a pointer",
+		},
+		{
+			flag: &cli.Flag{Name: "foo", Store: &aInt},
+			err:  "invalid 'Store' while adding flag 'foo': cannot store array of type int; only slices supported",
+		},
+		{
+			flag: &cli.Flag{Name: "foo", Store: &aStr},
+			err:  "invalid 'Store' while adding flag 'foo': cannot store array of type string; only slices supported",
+		},
+		{
+			flag: &cli.Flag{Name: "foo", Store: &aBool},
+			err:  "invalid 'Store' while adding flag 'foo': cannot store array of type bool; only slices supported",
+		},
+	}
+
+	for _, test := range tests {
+		p := cli.New(nil)
+		p.Add(test.flag)
+
+		retCode, err := p.Parse(nil, []string{})
+		assert.NotNil(t, err)
+		assert.Equal(t, cli.ErrorRetCode, retCode)
+		assert.Contains(t, err.Error(), test.err)
+	}
+}
+
+func TestMultpleFlagSameStore(t *testing.T) {
+	var foo string
 	p := cli.New(nil)
-	p.Add(&cli.Flag{Name: "foo", Store: &foo, Aliases: []string{"f"}})
+	p.Add(&cli.Flag{Name: "foo", Store: &foo})
+	p.Add(&cli.Flag{Name: "bar", Store: &foo})
 
 	// Given
-	retCode, err := p.Parse(nil, []string{})
+	retCode, err := p.Parse(nil, []string{"--foo", "bang"})
 
 	// Then
-	assert.NotNil(t, err)
-	assert.Equal(t, cli.ErrorRetCode, retCode)
-	assert.Contains(t, err.Error(), "invalid 'Store' while adding flag 'foo': cannot store 'int64'; type not supported")
+	assert.Nil(t, err)
+	assert.Equal(t, 0, retCode)
+	assert.Equal(t, "bang", foo)
+
+	// Given
+	retCode, err = p.Parse(nil, []string{"--bar", "foo"})
+
+	// Then
+	assert.Nil(t, err)
+	assert.Equal(t, 0, retCode)
+	assert.Equal(t, "foo", foo)
 }
 
 // TODO: Add argument cast tests to the `TestFlag` tests and rename them `TestDefaultScalar()`, etc...
@@ -116,7 +169,6 @@ func TestFlagWithBoolSlice(t *testing.T) {
 
 func TestFlagWithSlice(t *testing.T) {
 	var foo []string
-	// TODO: Test array with 'Store' instead of slice 'var bar [2]string'
 	var count int
 
 	p := cli.New(nil)
