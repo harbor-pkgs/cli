@@ -26,20 +26,20 @@ key='{"bash":"bang","bar":"foo","alan":"alan"}'
 `
 
 func TestReadScalarValues(t *testing.T) {
-	kv, err := cli.NewKVStore(bytes.NewReader([]byte(scalarFile)))
+	kv, err := cli.NewIniStore(bytes.NewReader([]byte(scalarFile)))
 	require.Nil(t, err)
 
-	value, count, err := kv.Get(context.TODO(), "foo", cli.ScalarType)
+	value, count, err := kv.Get(context.TODO(), "foo", cli.ScalarKind)
 	require.Nil(t, err)
 	assert.Equal(t, 4, count)
 	assert.Equal(t, "bar", value.(string))
 }
 
 func TestReadListValues(t *testing.T) {
-	kv, err := cli.NewKVStore(bytes.NewReader([]byte(scalarFile)))
+	kv, err := cli.NewIniStore(bytes.NewReader([]byte(scalarFile)))
 	require.Nil(t, err)
 
-	value, count, err := kv.Get(context.TODO(), "foo", cli.ListType)
+	value, count, err := kv.Get(context.TODO(), "foo", cli.ListKind)
 	require.Nil(t, err)
 	assert.Equal(t, 4, count)
 
@@ -50,10 +50,10 @@ func TestReadListValues(t *testing.T) {
 }
 
 func TestReadMapValues(t *testing.T) {
-	kv, err := cli.NewKVStore(bytes.NewReader([]byte(mapFile)))
+	kv, err := cli.NewIniStore(bytes.NewReader([]byte(mapFile)))
 	require.Nil(t, err)
 
-	value, count, err := kv.Get(context.TODO(), "foo", cli.MapType)
+	value, count, err := kv.Get(context.TODO(), "foo", cli.MapKind)
 	require.Nil(t, err)
 	assert.Equal(t, 1, count)
 
@@ -68,10 +68,10 @@ func TestReadMapValues(t *testing.T) {
 }
 
 func TestReadMapValuesJSON(t *testing.T) {
-	kv, err := cli.NewKVStore(bytes.NewReader([]byte(mapFile)))
+	kv, err := cli.NewIniStore(bytes.NewReader([]byte(mapFile)))
 	require.Nil(t, err)
 
-	value, count, err := kv.Get(context.TODO(), "key", cli.MapType)
+	value, count, err := kv.Get(context.TODO(), "key", cli.MapKind)
 	require.Nil(t, err)
 	assert.Equal(t, 1, count)
 
@@ -93,7 +93,7 @@ func TestFromStore(t *testing.T) {
 	p.Add(&cli.Flag{Name: "foo", Count: &count, Store: &foo})
 	p.Add(&cli.Flag{Name: "bar", Count: &count, Store: &bar})
 
-	kv, err := cli.NewKVStore(bytes.NewReader([]byte(scalarFile)))
+	kv, err := cli.NewIniStore(bytes.NewReader([]byte(scalarFile)))
 	require.Nil(t, err)
 	p.AddStore(kv)
 
@@ -112,20 +112,24 @@ func TestFromStore(t *testing.T) {
 	assert.Equal(t, "foo", bar)
 }
 
-
 var castFile = `
+# Strings
 str=bar
 strSlice=bar,foo,bang
 strMap="bash=bang,bar=foo,bang=bash"
-int=1
+
+# Integers
+integer=1
 intSlice=1,2,3
 intMap="one=1,two=2,three=3"
-bool=true
+
+# Booleans
+boolean=true
 boolSlice=false,true,false
 boolMap="on=true,off=false,yes=no"
 `
 
-/*func TestCastFile(t *testing.T) {
+func TestCastFile(t *testing.T) {
 	var str string
 	var strSlice []string
 	var strMap map[string]string
@@ -136,38 +140,38 @@ boolMap="on=true,off=false,yes=no"
 	var boolSlice []bool
 	var boolMap map[string]bool
 
-	tests := struct {
-		flags []cli.Variant
-	} {
-		flags: []cli.Variant{
-			&cli.Flag{Name: "str", Store: &str},
-			&cli.Flag{Name: "strSlice", Store: &strSlice},
-			&cli.Flag{Name: "strMap", Store: &strMap},
+	p := cli.New(nil)
+	p.Add(
+		&cli.Flag{Name: "str", Store: &str},
+		&cli.Flag{Name: "strSlice", Store: &strSlice},
+		&cli.Flag{Name: "strMap", Store: &strMap},
 
-			&cli.Flag{Name: "integer", Store: &integer},
-			&cli.Flag{Name: "intSlice", Store: &intSlice},
-			&cli.Flag{Name: "intMap", Store: &intMap},
+		&cli.Flag{Name: "integer", Store: &integer},
+		&cli.Flag{Name: "intSlice", Store: &intSlice},
+		&cli.Flag{Name: "intMap", Store: &intMap},
 
-			&cli.Flag{Name: "boolean", Store: &boolean},
-			&cli.Flag{Name: "boolSlice", Store: &boolSlice},
-			&cli.Flag{Name: "boolMap", Store: &boolMap},
-		},
-	}
+		&cli.Flag{Name: "boolean", Store: &boolean},
+		&cli.Flag{Name: "boolSlice", Store: &boolSlice},
+		&cli.Flag{Name: "boolMap", Store: &boolMap},
+	)
+	kv, err := cli.NewIniStore(bytes.NewReader([]byte(castFile)))
+	require.Nil(t, err)
+	p.AddStore(kv)
 
-	for _, test := tests {
-		p := cli.New(nil)
-		kv, err := cli.NewKVStore(bytes.NewReader([]byte(scalarFile)))
-		require.Nil(t, err)
-		p.AddStore(kv)
+	// Given no value
+	retCode, err := p.Parse(nil, []string{})
 
-		// Given no value
-		retCode, err := p.Parse(nil, []string{})
+	assert.Nil(t, err)
+	assert.Equal(t, 0, retCode)
+	assert.Equal(t, "bar", str)
+	assert.Equal(t, []string{"bar", "foo", "bang"}, strSlice)
+	assert.Equal(t, map[string]string{"bash": "bang", "bar": "foo", "bang": "bash"}, strMap)
 
-		assert.Nil(t, err)
-		assert.Equal(t, 0, retCode)
-		assert.Equal(t, "foo", bar)
+	assert.Equal(t, 1, integer)
+	assert.Equal(t, []int{1, 2, 3}, intSlice)
+	assert.Equal(t, map[string]int{"one": 1, "two": 2, "three": 3}, intMap)
 
-	}
-}*/
-
-
+	assert.Equal(t, true, boolean)
+	assert.Equal(t, []bool{false, true, false}, boolSlice)
+	assert.Equal(t, map[string]bool{"on": true, "off": false, "yes": false}, boolMap)
+}

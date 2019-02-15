@@ -226,7 +226,7 @@ func (p *Parser) Parse(ctx context.Context, argv []string) (int, error) {
 		return ErrorRetCode, &HelpError{}
 	}
 
-	// If we get here, we are at the top of the parent tree
+	// If we get here, we are at the top of the parent tree and are ready to store values
 	results := newResultStore(p.rules)
 
 	// Retrieve values from any stores provided by the user first
@@ -276,6 +276,8 @@ func (p *Parser) validateAndStore(rs *resultStore) (int, error) {
 				if rule.HasFlag(isRequired) {
 					return ErrorRetCode, errors.New(rule.IsRequiredMessage())
 				}
+				// Nothing else to be done; no value to set
+				continue
 			}
 		}
 

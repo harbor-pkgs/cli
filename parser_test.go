@@ -159,7 +159,6 @@ func TestFlagIsRequired(t *testing.T) {
 	assert.Equal(t, "flag '--foo' is required", err.Error())
 }
 
-
 func TestFlagReplace(t *testing.T) {
 	var count int
 	var foo []string
@@ -222,7 +221,7 @@ func TestBarArgument(t *testing.T) {
 	assert.Equal(t, "bar-thing", bar)
 }
 
-func TestBarFooArguments(t *testing.T) {
+func TestArgumentOverride(t *testing.T) {
 	var bar, foo string
 
 	p := cli.New(nil)
@@ -238,14 +237,14 @@ func TestBarFooArguments(t *testing.T) {
 	assert.Equal(t, "bar-thing", bar)
 	assert.Equal(t, "foo-thing", foo)
 
-	// Given
+	// Given no arguments
 	retCode, err = p.Parse(nil, []string{})
 
-	// Then
+	// Then Parse() should not override current values
 	assert.Nil(t, err)
 	assert.Equal(t, 0, retCode)
-	assert.Equal(t, "", bar)
-	assert.Equal(t, "", foo)
+	assert.Equal(t, "bar-thing", bar)
+	assert.Equal(t, "foo-thing", foo)
 }
 
 func TestArgumentAndFlags(t *testing.T) {

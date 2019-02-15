@@ -13,11 +13,11 @@ type keyValue struct {
 	Value string
 }
 
-type KVStore struct {
+type INIStore struct {
 	values map[string][]keyValue
 }
 
-func NewKVStore(r io.Reader) (FromStore, error) {
+func NewIniStore(r io.Reader) (FromStore, error) {
 	contents, err := ioutil.ReadAll(r)
 	if err != nil {
 		return nil, err
@@ -84,10 +84,11 @@ func NewKVStore(r io.Reader) (FromStore, error) {
 			values[key] = []keyValue{{Key: key, Value: value}}
 		}
 	}
-	return &KVStore{values: values}, nil
+	fmt.Printf("Values: %+v\n", values)
+	return &INIStore{values: values}, nil
 }
 
-func (kv *KVStore) Get(ctx context.Context, key string, vt ValueType) (interface{}, int, error) {
+func (kv *INIStore) Get(ctx context.Context, key string, kind Kind) (interface{}, int, error) {
 	kvs, ok := kv.values[key]
 	if !ok {
 		return "", 0, nil
@@ -105,31 +106,10 @@ func (kv *KVStore) Get(ctx context.Context, key string, vt ValueType) (interface
 		return nil, count, nil
 	}
 
-	switch vt {
-	case ScalarType:
-		return values[0], count, nil
-	case ListType:
-		return values, len(values), nil
-	case MapType:
-		// each string in the list should be a key value pair
-		// either in the form `key=value` or `{"key": "value"}`
-		r := make(map[string]string)
-		for _, value := range values {
-			kv, err := ToStringMap(value)
-			if err != nil {
-				return nil, 0, fmt.Errorf("during KVStore.Get() map conversion: %s", err)
-			}
-			// Merge the key values for each of the items
-			for k, v := range kv {
-				r[k] = v
-			}
-		}
-		return r, count, nil
-	}
-	return nil, 0, nil
+	return sliceToKind(values, kind, count)
 }
 
-func (kv *KVStore) Source() string {
+func (kv *INIStore) Source() string {
 	// TODO: Make this something users can reference
 	return "key-value-store"
 }

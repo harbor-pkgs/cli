@@ -87,7 +87,7 @@ func (s *scanner) scanArgs() {
 
 		}*/
 		if rule.HasFlag(isArgument) {
-			// Find the first argument that was not determined to be a flag or a subcommand
+			// Find an argument that is not already matched with a rule
 			for i, arg := range s.argv {
 				if !s.syntax.Contains(i) {
 					s.syntax.Add(&node{

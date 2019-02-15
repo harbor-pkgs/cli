@@ -79,17 +79,20 @@ func TestStringToMapWithNoValue(t *testing.T) {
 }
 
 func TestStringToSlice(t *testing.T) {
-	r := cli.StringToSlice("one,two,three")
+	r := cli.ToSlice("one,two,three")
 	assert.Equal(t, []string{"one", "two", "three"}, r)
 
-	r = cli.StringToSlice("one, two, three", strings.TrimSpace)
+	r = cli.ToSlice("one, two, three", strings.TrimSpace)
 	assert.Equal(t, []string{"one", "two", "three"}, r)
 
-	r = cli.StringToSlice("one, two, three", strings.TrimSpace, strings.ToUpper)
+	r = cli.ToSlice("one, two, three", strings.TrimSpace, strings.ToUpper)
 	assert.Equal(t, []string{"ONE", "TWO", "THREE"}, r)
 
-	r = cli.StringToSlice("one ", strings.TrimSpace, strings.ToUpper)
+	r = cli.ToSlice("one ", strings.TrimSpace, strings.ToUpper)
 	assert.Equal(t, []string{"ONE"}, r)
+
+	r = cli.ToSlice("'1,234', '3,000', '0,0'", strings.TrimSpace, cli.TrimQuotes)
+	assert.Equal(t, []string{"1,234", "3,000", "0,0"}, r)
 }
 
 func TestWordWrapNoIndent(t *testing.T) {
@@ -154,13 +157,13 @@ func ExampleWordWrap() {
 
 func ExampleStringToSlice() {
 	// Returns []string{"one"}
-	fmt.Println(cli.StringToSlice("one"))
+	fmt.Println(cli.ToSlice("one"))
 
 	// Returns []string{"one", "two", "three"}
-	fmt.Println(cli.StringToSlice("one, two, three", strings.TrimSpace))
+	fmt.Println(cli.ToSlice("one, two, three", strings.TrimSpace))
 
 	//  Returns []string{"ONE", "TWO", "THREE"}
-	fmt.Println(cli.StringToSlice("one,two,three", strings.ToUpper, strings.TrimSpace))
+	fmt.Println(cli.ToSlice("one,two,three", strings.ToUpper, strings.TrimSpace))
 
 	// Output:
 	// [one]

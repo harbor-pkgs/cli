@@ -21,7 +21,7 @@ func (e *envStore) Source() string {
 	return envSource
 }
 
-func (e *envStore) Get(ctx context.Context, name string, valueType ValueType) (interface{}, int, error) {
+func (e *envStore) Get(ctx context.Context, name string, valueType Kind) (interface{}, int, error) {
 	rule := e.rules.GetRule(name)
 	if rule == nil {
 		return nil, 0, nil
@@ -37,16 +37,16 @@ func (e *envStore) Get(ctx context.Context, name string, valueType ValueType) (i
 	}
 
 	switch valueType {
-	case ScalarType:
+	case ScalarKind:
 		return value, 1, nil
-	case ListType:
-		r := StringToSlice(value, strings.TrimSpace)
+	case ListKind:
+		r := ToSlice(value, strings.TrimSpace)
 		return r, len(r), nil
-	case MapType:
+	case MapKind:
 		r, err := ToStringMap(value)
 		if err != nil {
 			return r, len(r), nil
 		}
 	}
-	return value, 1, fmt.Errorf("unknown ValueType '%s'", valueType)
+	return value, 1, fmt.Errorf("unknown Kind '%s'", valueType)
 }

@@ -186,22 +186,22 @@ func (r ruleList) RuleWithFlag(flag ruleFlag) *rule {
 	return nil
 }
 
-type ValueType string
+type Kind string
 
 const (
-	ScalarType ValueType = "scalar"
-	ListType   ValueType = "list"
-	MapType    ValueType = "map"
+	ScalarKind Kind = "scalar"
+	ListKind   Kind = "list"
+	MapKind    Kind = "map"
 )
 
-func (r rule) ValueType() ValueType {
+func (r rule) ValueType() Kind {
 	switch {
 	case r.HasFlag(isList):
-		return ListType
+		return ListKind
 	case r.HasFlag(isMap):
-		return MapType
+		return MapKind
 	}
-	return ScalarType
+	return ScalarKind
 }
 
 func (r rule) Type() string {

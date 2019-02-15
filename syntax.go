@@ -72,8 +72,8 @@ func (s *linearSyntax) String() string {
 	return strings.Join(lines, "\n")
 }
 
-func (s *linearSyntax) Get(ctx context.Context, key string, valueType ValueType) (interface{}, int, error) {
-	//fmt.Printf("Get(%s,%s)\n", key, valueType)
+func (s *linearSyntax) Get(ctx context.Context, key string, kind Kind) (interface{}, int, error) {
+	//fmt.Printf("Get(%s,%s)\n", key, kind)
 	rule := s.rules.GetRule(key)
 	if rule == nil {
 		return "", 0, nil
@@ -96,31 +96,7 @@ func (s *linearSyntax) Get(ctx context.Context, key string, valueType ValueType)
 		return nil, count, nil
 	}
 
-	switch valueType {
-	case ScalarType:
-		//fmt.Printf("Get Ret: %s, %d\n", values[0], count)
-		return values[0], count, nil
-	case ListType:
-		//fmt.Printf("Get Ret: %s, %d\n", values, count)
-		return values, len(values), nil
-	case MapType:
-		// each string in the list should be a key value pair
-		// either in the form `key=value` or `{"key": "value"}`
-		r := make(map[string]string)
-		for _, value := range values {
-			kv, err := ToStringMap(value)
-			if err != nil {
-				return nil, 0, fmt.Errorf("during Parser.Get() map conversion: %s", err)
-			}
-			// Merge the key values for each of the items
-			for k, v := range kv {
-				r[k] = v
-			}
-		}
-		//fmt.Printf("Get Ret: %s, %d\n", r, count)
-		return r, count, nil
-	}
-	return nil, 0, fmt.Errorf("no such ValueType '%s'", valueType)
+	return sliceToKind(values, kind, count)
 }
 
 func (p *linearSyntax) Source() string {

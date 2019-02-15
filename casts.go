@@ -39,7 +39,7 @@ func toBool(ptr *bool) StoreFunc {
 	return func(value interface{}, count int) error {
 		switch t := value.(type) {
 		case string:
-			b, err := strconv.ParseBool(t)
+			b, err := ToBool(t)
 			if err != nil {
 				return fmt.Errorf("'%s' is not a boolean", t)
 			}
@@ -78,7 +78,7 @@ func toStringSlice(ptr *[]string) StoreFunc {
 	return func(value interface{}, count int) error {
 		switch t := value.(type) {
 		case string:
-			*ptr = StringToSlice(t, strings.TrimSpace)
+			*ptr = ToSlice(t, strings.TrimSpace)
 		case []string:
 			*ptr = t
 		case map[string]string:
@@ -146,7 +146,7 @@ func toBoolMap(ptr *map[string]bool) StoreFunc {
 			strMap := value.(map[string]string)
 			result := make(map[string]bool, len(strMap))
 			for k, v := range strMap {
-				b, err := strconv.ParseBool(strings.TrimSpace(v))
+				b, err := ToBool(strings.TrimSpace(v))
 				if err != nil {
 					return fmt.Errorf("'%s' is not a boolean", v)
 				}
@@ -194,7 +194,7 @@ func toBoolSlice(ptr *[]bool) StoreFunc {
 	strListToBoolList := func(slice []string) ([]bool, error) {
 		var r []bool
 		for _, item := range slice {
-			b, err := strconv.ParseBool(strings.TrimSpace(item))
+			b, err := ToBool(strings.TrimSpace(item))
 			if err != nil {
 				return nil, fmt.Errorf("'%s' is not a boolean", item)
 			}

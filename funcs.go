@@ -8,8 +8,9 @@ import (
 	"os"
 	"reflect"
 	"regexp"
-	"strings"
 	"strconv"
+	"strings"
+	"unicode"
 )
 
 type ErrorFunc func(string)
@@ -19,7 +20,7 @@ func panicFunc(msg string) {
 }
 
 // ContainsString checks if a given slice of strings contains the provided string.
-// If a modifier func is provided, it is called with the slice item before the comparation.
+// If a modifier func is provided, it is called with the slice item before the comparision.
 //      haystack := []string{"one", "Two", "Three"}
 //	if slice.ContainsString(haystack, "two", strings.ToLower) {
 //		// Do thing
@@ -38,8 +39,24 @@ func ContainsString(s string, slice []string, modifier func(s string) string) bo
 
 // Given a comma separated string, return a slice of string items.
 // Return the entire string as the first item if no comma is found.
-func StringToSlice(value string, modifiers ...func(s string) string) []string {
-	result := strings.Split(value, ",")
+func ToSlice(value string, modifiers ...func(s string) string) []string {
+	// TODO: Ignore commas inside a quote `"1,234", "20,2020", "1,1"`
+	lastQuote := rune(0)
+	result := strings.FieldsFunc(value, func(c rune) bool {
+		switch {
+		case c == lastQuote:
+			lastQuote = rune(0)
+			return false
+		case lastQuote != rune(0):
+			return false
+		case unicode.In(c, unicode.Quotation_Mark):
+			lastQuote = c
+			return false
+		default:
+			return c == ','
+
+		}
+	})
 	// Apply the modifiers
 	for _, modifier := range modifiers {
 		for idx, item := range result {
@@ -49,7 +66,14 @@ func StringToSlice(value string, modifiers ...func(s string) string) []string {
 	return result
 }
 
-func ToIntMap(value string) (map[string]int ,error) {
+// Trims quotes from the given string
+func TrimQuotes(value string) string {
+	return strings.TrimFunc(value, func(v rune) bool { return unicode.In(v, unicode.Quotation_Mark) })
+}
+
+// Given a comma separated string of key values in the form `key=int`.
+// Return a map[string]int for each key/value parsed
+func ToIntMap(value string) (map[string]int, error) {
 	strMap, err := ToStringMap(value)
 	if err != nil {
 		return nil, err
@@ -66,7 +90,9 @@ func ToIntMap(value string) (map[string]int ,error) {
 	return result, nil
 }
 
-func ToBoolMap(value string) (map[string]bool ,error) {
+// Given a comma separated string of key values in the form `key=value`.
+// Return a map[string]bool for each key/value parsed
+func ToBoolMap(value string) (map[string]bool, error) {
 	strMap, err := ToStringMap(value)
 	if err != nil {
 		return nil, err
@@ -74,13 +100,25 @@ func ToBoolMap(value string) (map[string]bool ,error) {
 
 	result := make(map[string]bool, len(strMap))
 	for k, v := range strMap {
-		b, err := strconv.ParseBool(v)
+		b, err := ToBool(v)
 		if err != nil {
-			return nil, fmt.Errorf("'%s' is not a boolean", v)
+			return nil, err
 		}
 		result[k] = b
 	}
 	return result, nil
+}
+
+// Given a string, return the boolean value represented by the string.
+// It accepts 1, t, T, TRUE, true, True, "YES", "yes", "Yes", "NO", "no", "No", 0, f, F, FALSE, false, False.
+func ToBool(value string) (bool, error) {
+	switch value {
+	case "1", "t", "T", "true", "TRUE", "True", "YES", "yes", "Yes":
+		return true, nil
+	case "0", "f", "F", "false", "FALSE", "False", "NO", "no", "No":
+		return false, nil
+	}
+	return false, fmt.Errorf("'%s' is not a boolean", value)
 }
 
 // Given a comma separated string of key values in the form `key=value`.

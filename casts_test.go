@@ -18,8 +18,8 @@ func TestInvalidStoreType(t *testing.T) {
 
 	tests := []struct {
 		flag *cli.Flag
-		err string
-	} {
+		err  string
+	}{
 		{
 			flag: &cli.Flag{Name: "foo", Store: &integer64},
 			err:  "invalid 'Store' while adding flag 'foo': cannot store 'int64'; type not supported",
@@ -77,7 +77,7 @@ func TestMultpleFlagSameStore(t *testing.T) {
 }
 
 // TODO: Add argument cast tests to the `TestFlag` tests and rename them `TestDefaultScalar()`, etc...
-// TODO: Add tests that cast values from a KVStore, This will exercise the 'string'
+// TODO: Add tests that cast values from a INIStore, This will exercise the 'string'
 // to 'type' path in `toXX` cast functions
 
 func TestFlagDefaultScalar(t *testing.T) {
