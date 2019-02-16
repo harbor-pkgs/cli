@@ -1,11 +1,11 @@
 package cli
 
 import (
+	"bytes"
 	"context"
 	"fmt"
 	"regexp"
 	"strings"
-	"bytes"
 )
 
 var regexHasPrefix = regexp.MustCompile(`^(\W+)([\w|-]*)$`)
@@ -15,11 +15,24 @@ type ActionFunc func(*rule, string, []string, *int) error
 type StoreFunc func(interface{}, int) error
 type CommandFunc func(context.Context, *Parser) (int, error)
 
-type ruleFlag int64
+type Flags int64
+
+func (f *Flags) Has(flag Flags) bool {
+	return *f&flag != 0
+}
+
+func (f *Flags) Set(flag Flags, set bool) {
+	if set {
+		*f = *f | flag
+	} else {
+		mask := *f ^ flag
+		*f &= mask
+	}
+}
 
 const (
-	allFlags  ruleFlag = 0xFFFFFFFF
-	isCommand ruleFlag = 1 << iota
+	allFlags  Flags = 0xFFFFFFFF
+	isCommand Flags = 1 << iota
 	isArgument
 	isRequired
 	isFlag
@@ -27,15 +40,15 @@ const (
 	canRepeat
 	isExpectingValue
 	isHidden
-	hasCount
+	noSplit
 	isHelpRule
 
-	// Type flags
-	isList
-	isMap
-	isScalar
-
 	// Kind flags
+	ScalarKind
+	ListKind
+	MapKind
+
+	// Type flags
 	isString
 	isInt
 	isBool
@@ -52,14 +65,14 @@ type rule struct {
 	Choices     []string
 	StoreFuncs  []StoreFunc
 	CommandFunc CommandFunc
-	flags       ruleFlag
+	flags       Flags
 }
 
-func (r *rule) HasFlag(flag ruleFlag) bool {
+func (r *rule) HasFlag(flag Flags) bool {
 	return r.flags&flag != 0
 }
 
-func (r *rule) SetFlag(flag ruleFlag, set bool) {
+func (r *rule) SetFlag(flag Flags, set bool) {
 	if set {
 		r.flags = r.flags | flag
 	} else {
@@ -135,7 +148,7 @@ func (r *rule) generateConfigHelp(wordWrap int) bytes.Buffer {
 
 func (r *rule) TypeUsage() string {
 	switch {
-	case r.HasFlag(isScalar):
+	case r.HasFlag(ScalarKind):
 		switch {
 		case r.HasFlag(isString):
 			return "<string>"
@@ -146,7 +159,7 @@ func (r *rule) TypeUsage() string {
 		default:
 			return "<unknown>"
 		}
-	case r.HasFlag(isList):
+	case r.HasFlag(ListKind):
 		switch {
 		case r.HasFlag(isString):
 			return "<str>,<str>"
@@ -157,7 +170,7 @@ func (r *rule) TypeUsage() string {
 		default:
 			return "<unknown>,<unknown>"
 		}
-	case r.HasFlag(isMap):
+	case r.HasFlag(MapKind):
 		switch {
 		case r.HasFlag(isString):
 			return "<key>=<string>"

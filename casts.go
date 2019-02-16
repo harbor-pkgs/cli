@@ -41,7 +41,7 @@ func toBool(ptr *bool) StoreFunc {
 		case string:
 			b, err := ToBool(t)
 			if err != nil {
-				return fmt.Errorf("'%s' is not a boolean", t)
+				return err
 			}
 			*ptr = b
 		case []string, map[string]string:
@@ -148,7 +148,7 @@ func toBoolMap(ptr *map[string]bool) StoreFunc {
 			for k, v := range strMap {
 				b, err := ToBool(strings.TrimSpace(v))
 				if err != nil {
-					return fmt.Errorf("'%s' is not a boolean", v)
+					return err
 				}
 				result[k] = b
 			}
@@ -196,7 +196,7 @@ func toBoolSlice(ptr *[]bool) StoreFunc {
 		for _, item := range slice {
 			b, err := ToBool(strings.TrimSpace(item))
 			if err != nil {
-				return nil, fmt.Errorf("'%s' is not a boolean", item)
+				return nil, err
 			}
 			r = append(r, b)
 		}

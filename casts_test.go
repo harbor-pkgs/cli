@@ -1,7 +1,11 @@
 package cli_test
 
 import (
+	"errors"
+	"github.com/davecgh/go-spew/spew"
 	"sort"
+	"strconv"
+	"strings"
 	"testing"
 
 	"github.com/harbor-pkgs/cli"
@@ -298,4 +302,78 @@ func TestFlagWithMapAndJSON(t *testing.T) {
 	assert.Equal(t, foo["bar"], "foo")
 	assert.Equal(t, foo["foo"], "bar")
 	assert.Equal(t, foo["bash"], "bang")
+}
+
+type cordinates struct {
+	points []point
+}
+
+type point struct {
+	x int
+	y int
+}
+
+func (c *cordinates) Set(v string) error {
+	parts := strings.Split(v, ",")
+	if len(parts) != 2 {
+		return errors.New("malformed coordinate point")
+	}
+
+	var points []int
+	for _, part := range parts {
+		v, err := strconv.ParseInt(part, 10, 64)
+		if err != nil {
+			return err
+		}
+		points = append(points, int(v))
+	}
+
+	c.points = append(c.points, point{x: points[0], y: points[1]})
+	spew.Dump(c.points)
+	return nil
+}
+
+func TestSetValueInterface(t *testing.T) {
+	var cords cordinates
+
+	p := cli.New(nil)
+	p.Add(&cli.Flag{
+		Name:  "point",
+		Store: &cords,
+		//Flags: cli.CanRepeat | cli.NoSplit, // TODO: Make these flags
+		CanRepeat: true, // TODO: Make this implicit when using `Set()` interface
+		Aliases:   []string{"p"},
+		NoSplit:   true,
+	})
+
+	// Given
+	retCode, err := p.Parse(nil, []string{"--point", "1"})
+
+	// Then
+	assert.NotNil(t, err)
+	assert.Equal(t, "invalid value for flag 'point': malformed coordinate point", err.Error())
+
+	// Given
+	retCode, err = p.Parse(nil, []string{"--point", "1,2"})
+
+	// Then
+	assert.Nil(t, err)
+	assert.Equal(t, 0, retCode)
+	assert.Equal(t, []point{
+		{x: 1, y: 2},
+	}, cords.points)
+	cords.points = nil
+
+	// Given
+	retCode, err = p.Parse(nil, []string{"--point", "1,2", "-p", "25,35", "-p", "100,5000"})
+
+	// Then
+	assert.Nil(t, err)
+	assert.Equal(t, 0, retCode)
+	assert.Equal(t, []point{
+		{x: 1, y: 2},
+		{x: 25, y: 35},
+		{x: 100, y: 5000},
+	}, cords.points)
+
 }

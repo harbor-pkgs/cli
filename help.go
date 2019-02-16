@@ -100,7 +100,7 @@ func (p *Parser) GenerateINIConfig() []byte {
 	var result bytes.Buffer
 	for _, rule := range p.rules {
 		// Exclude sub commands and the help rule
-		if rule.HasFlag(isCommand|isHelpRule){
+		if rule.HasFlag(isCommand | isHelpRule) {
 			continue
 		}
 		result.Write(rule.GenerateINIUsage(p.cfg.WordWrap))
@@ -108,7 +108,7 @@ func (p *Parser) GenerateINIConfig() []byte {
 	return result.Bytes()
 }
 
-func (p *Parser) generateUsage(flags ruleFlag) string {
+func (p *Parser) generateUsage(flags Flags) string {
 	var result bytes.Buffer
 
 	if flags == isFlag {
@@ -124,7 +124,7 @@ func (p *Parser) generateUsage(flags ruleFlag) string {
 	return result.String()
 }
 
-func (p *Parser) generateHelpSection(flags ruleFlag) string {
+func (p *Parser) generateHelpSection(flags Flags) string {
 	type helpMsg struct {
 		Flags   string
 		Message string

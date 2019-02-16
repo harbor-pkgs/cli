@@ -35,7 +35,7 @@ func (r ruleList) String() string {
 }
 
 // TODO: Consider removing this
-func (r *ruleList) SortRulesWithFlag(flag ruleFlag) ruleList {
+func (r *ruleList) SortRulesWithFlag(flag Flags) ruleList {
 	var results ruleList
 
 	var sorted []string
@@ -177,7 +177,7 @@ func (r ruleList) GetRuleIndex(name string) int {
 	return -1
 }
 
-func (r ruleList) RuleWithFlag(flag ruleFlag) *rule {
+func (r ruleList) GetRuleByFlag(flag Flags) *rule {
 	for _, rule := range r {
 		if rule.HasFlag(flag) {
 			return rule
@@ -186,22 +186,8 @@ func (r ruleList) RuleWithFlag(flag ruleFlag) *rule {
 	return nil
 }
 
-type Kind string
-
-const (
-	ScalarKind Kind = "scalar"
-	ListKind   Kind = "list"
-	MapKind    Kind = "map"
-)
-
-func (r rule) ValueType() Kind {
-	switch {
-	case r.HasFlag(isList):
-		return ListKind
-	case r.HasFlag(isMap):
-		return MapKind
-	}
-	return ScalarKind
+func (r rule) Flags() Flags {
+	return r.flags
 }
 
 func (r rule) Type() string {
@@ -212,6 +198,18 @@ func (r rule) Type() string {
 		return "argument"
 	case r.HasFlag(isCommand):
 		return "command"
+	}
+	return "unknown"
+}
+
+func (r rule) Kind() string {
+	switch {
+	case r.HasFlag(ScalarKind):
+		return "ScalarKind"
+	case r.HasFlag(ListKind):
+		return "ListKind"
+	case r.HasFlag(MapKind):
+		return "MapKind"
 	}
 	return "unknown"
 }

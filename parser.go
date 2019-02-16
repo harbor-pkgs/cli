@@ -171,7 +171,7 @@ func (p *Parser) Parse(ctx context.Context, argv []string) (int, error) {
 			p.argv = argv
 		}
 		// If user requested we add a help flag, and if one is not already defined
-		if !p.HasMode(NoHelp) && p.rules.RuleWithFlag(isHelpRule) == nil {
+		if !p.HasMode(NoHelp) && p.rules.GetRuleByFlag(isHelpRule) == nil {
 			p.Add(&Flag{
 				Help:     "display this help message and exit",
 				Name:     "help",
@@ -259,11 +259,11 @@ func (p *Parser) validateAndStore(rs *resultStore) (int, error) {
 	fmt.Printf("4 results: %+v\n", rs.values)
 	for _, rule := range p.rules {
 		// get the value and how many instances of it where provided via the command line
-		value, count, err := rs.Get(context.Background(), rule.Name, rule.ValueType())
+		value, count, err := rs.Get(context.Background(), rule.Name, rule.Flags())
 		if err != nil {
 			return ErrorRetCode, err
 		}
-		fmt.Printf("[validate]Get(%s,%s) - '%v' %d\n", rule.Name, rule.ValueType(), value, count)
+		fmt.Printf("[validate]Get(%s,%s) - '%v' %d\n", rule.Name, rule.Kind(), value, count)
 
 		// if no instances of this rule where found
 		if count == 0 {

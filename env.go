@@ -2,9 +2,7 @@ package cli
 
 import (
 	"context"
-	"fmt"
 	"os"
-	"strings"
 )
 
 type envStore struct {
@@ -21,7 +19,7 @@ func (e *envStore) Source() string {
 	return envSource
 }
 
-func (e *envStore) Get(ctx context.Context, name string, valueType Kind) (interface{}, int, error) {
+func (e *envStore) Get(ctx context.Context, name string, flags Flags) (interface{}, int, error) {
 	rule := e.rules.GetRule(name)
 	if rule == nil {
 		return nil, 0, nil
@@ -36,17 +34,5 @@ func (e *envStore) Get(ctx context.Context, name string, valueType Kind) (interf
 		return nil, 0, nil
 	}
 
-	switch valueType {
-	case ScalarKind:
-		return value, 1, nil
-	case ListKind:
-		r := ToSlice(value, strings.TrimSpace)
-		return r, len(r), nil
-	case MapKind:
-		r, err := ToStringMap(value)
-		if err != nil {
-			return r, len(r), nil
-		}
-	}
-	return value, 1, fmt.Errorf("unknown Kind '%s'", valueType)
+	return convToKind([]string{value}, flags, 1)
 }

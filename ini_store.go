@@ -88,7 +88,7 @@ func NewIniStore(r io.Reader) (FromStore, error) {
 	return &INIStore{values: values}, nil
 }
 
-func (kv *INIStore) Get(ctx context.Context, key string, kind Kind) (interface{}, int, error) {
+func (kv *INIStore) Get(ctx context.Context, key string, flags Flags) (interface{}, int, error) {
 	kvs, ok := kv.values[key]
 	if !ok {
 		return "", 0, nil
@@ -106,7 +106,7 @@ func (kv *INIStore) Get(ctx context.Context, key string, kind Kind) (interface{}
 		return nil, count, nil
 	}
 
-	return sliceToKind(values, kind, count)
+	return convToKind(values, flags, count)
 }
 
 func (kv *INIStore) Source() string {

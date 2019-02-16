@@ -2,6 +2,7 @@ package cli
 
 import (
 	"context"
+	"errors"
 	"fmt"
 	"strings"
 )
@@ -39,7 +40,7 @@ func (s *linearSyntax) FindRules(rule *rule) nodes {
 	return result
 }
 
-func (s *linearSyntax) FindWithFlag(flag ruleFlag) nodes {
+func (s *linearSyntax) FindWithFlag(flag Flags) nodes {
 	var result nodes
 	for _, node := range s.nodes {
 		if node.Rule != nil && node.Rule.HasFlag(flag) {
@@ -72,7 +73,7 @@ func (s *linearSyntax) String() string {
 	return strings.Join(lines, "\n")
 }
 
-func (s *linearSyntax) Get(ctx context.Context, key string, kind Kind) (interface{}, int, error) {
+func (s *linearSyntax) Get(ctx context.Context, key string, flags Flags) (interface{}, int, error) {
 	//fmt.Printf("Get(%s,%s)\n", key, kind)
 	rule := s.rules.GetRule(key)
 	if rule == nil {
@@ -96,7 +97,41 @@ func (s *linearSyntax) Get(ctx context.Context, key string, kind Kind) (interfac
 		return nil, count, nil
 	}
 
-	return sliceToKind(values, kind, count)
+	return convToKind(values, flags, count)
+}
+
+// Given a list of string values, attempt to convert them to a kind
+func convToKind(values []string, flags Flags, count int) (interface{}, int, error) {
+	switch {
+	case flags.Has(ScalarKind):
+		//fmt.Printf("Get Ret: %s, %d\n", values[0], count)
+		return values[0], count, nil
+	case flags.Has(ListKind):
+		fmt.Printf("flag: %t\n", flags.Has(noSplit))
+		// If only one item is provided, it must be a comma separated list
+		if count == 1 && !flags.Has(noSplit) {
+			return ToSlice(values[0]), count, nil
+		}
+
+		return values, count, nil
+	case flags.Has(MapKind):
+		// each string in the list should be a key value pair
+		// either in the form `key=value` or `{"key": "value"}`
+		r := make(map[string]string)
+		for _, value := range values {
+			kv, err := ToStringMap(value)
+			if err != nil {
+				return nil, 0, fmt.Errorf("map conversion: %s", err)
+			}
+			// Merge the key values for each of the items
+			for k, v := range kv {
+				r[k] = v
+			}
+		}
+		//fmt.Printf("Get Ret: %s, %d\n", r, count)
+		return r, count, nil
+	}
+	return nil, 0, errors.New("missing (ScalarKind|ListKind|MapKind) in flags")
 }
 
 func (p *linearSyntax) Source() string {
