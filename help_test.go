@@ -22,15 +22,15 @@ func TestHelpMessage(t *testing.T) {
 	})
 
 	p.Add(
-		&cli.Argument{Name: "arg-one", Required: true, Store: &argOne, Help: "this is a required argument"},
+		&cli.Argument{Name: "arg-one", Flags: cli.Required, Store: &argOne, Help: "this is a required argument"},
 		&cli.Argument{Name: "arg-two", Store: &argTwo, Help: "this argument is optional"},
 	)
 
 	p.Add(
-		&cli.Flag{Name: "flag", IsSet: &hasFlag, Help: "this is my flag"},
-		&cli.Flag{Name: "foo", Store: &foo, Aliases: []string{"f"}, Help: "used to store bars"},
-		&cli.Flag{Name: "bar", Store: &bar, Help: "used to store number of foo's"},
-		&cli.Flag{Name: "true", Store: &isTrue, Help: "is very true"},
+		&cli.Option{Name: "flag", IsSet: &hasFlag, Help: "this is my flag"},
+		&cli.Option{Name: "foo", Store: &foo, Aliases: []string{"f"}, Help: "used to store bars"},
+		&cli.Option{Name: "bar", Store: &bar, Help: "used to store number of foo's"},
+		&cli.Option{Name: "true", Store: &isTrue, Help: "is very true"},
 	)
 
 	p.Add(
@@ -57,7 +57,7 @@ func TestHelpMessage(t *testing.T) {
 		i++
 	}
 
-	compare("Usage: test [flags]  <arg-one> [arg-two]")
+	compare("Usage: test [options]  <arg-one> [arg-two]")
 	compare("")
 	compare("This is the description of the application")
 	compare("")
@@ -65,7 +65,7 @@ func TestHelpMessage(t *testing.T) {
 	compare("  arg-one   this is a required argument")
 	compare("  arg-two   this argument is optional")
 	compare("")
-	compare("Flags:")
+	compare("Options:")
 	compare("  --flag               this is my flag")
 	compare("  --foo, -f <string>   used to store bars")
 	compare("  --bar <int>          used to store number of foo's")
@@ -93,7 +93,7 @@ func TestGenerateConfig(t *testing.T) {
 	p.Add(&cli.EnvVar{Name: "endpoints", Env: "ENDPOINTS", Store: &endpoints,
 		Help: "A comma separated list of endpoints our application can connect too"})
 
-	p.Add(&cli.Flag{Name: "thing", Env: "THE_THING", Store: &thing, Default: "Let's call it a thingamajig",
+	p.Add(&cli.Option{Name: "thing", Env: "THE_THING", Store: &thing, Default: "Let's call it a thingamajig",
 		Help: "This is a rather simple thing"})
 
 	// Given
@@ -129,7 +129,6 @@ func TestGenerateConfig(t *testing.T) {
 	compare("")
 	compare(`# This is a rather simple thing (Default:"Let's call it a thingamajig")`)
 	compare("# export THE_THING=<string>")
-
 
 	// Test INI Config
 	config = string(p.GenerateINIConfig())

@@ -21,34 +21,34 @@ func TestInvalidStoreType(t *testing.T) {
 	var aBool [2]bool
 
 	tests := []struct {
-		flag *cli.Flag
-		err  string
+		option *cli.Option
+		err    string
 	}{
 		{
-			flag: &cli.Flag{Name: "foo", Store: &integer64},
-			err:  "invalid 'Store' while adding flag 'foo': cannot store 'int64'; type not supported",
+			option: &cli.Option{Name: "foo", Store: &integer64},
+			err:    "invalid 'Store' while adding option 'foo': cannot store 'int64'; type not supported",
 		},
 		{
-			flag: &cli.Flag{Name: "foo", Store: integer},
-			err:  "invalid 'Store' while adding flag 'foo': cannot use non pointer type 'int'; must provide a pointer",
+			option: &cli.Option{Name: "foo", Store: integer},
+			err:    "invalid 'Store' while adding option 'foo': cannot use non pointer type 'int'; must provide a pointer",
 		},
 		{
-			flag: &cli.Flag{Name: "foo", Store: &aInt},
-			err:  "invalid 'Store' while adding flag 'foo': cannot store array of type int; only slices supported",
+			option: &cli.Option{Name: "foo", Store: &aInt},
+			err:    "invalid 'Store' while adding option 'foo': cannot store array of type int; only slices supported",
 		},
 		{
-			flag: &cli.Flag{Name: "foo", Store: &aStr},
-			err:  "invalid 'Store' while adding flag 'foo': cannot store array of type string; only slices supported",
+			option: &cli.Option{Name: "foo", Store: &aStr},
+			err:    "invalid 'Store' while adding option 'foo': cannot store array of type string; only slices supported",
 		},
 		{
-			flag: &cli.Flag{Name: "foo", Store: &aBool},
-			err:  "invalid 'Store' while adding flag 'foo': cannot store array of type bool; only slices supported",
+			option: &cli.Option{Name: "foo", Store: &aBool},
+			err:    "invalid 'Store' while adding option 'foo': cannot store array of type bool; only slices supported",
 		},
 	}
 
 	for _, test := range tests {
 		p := cli.New(nil)
-		p.Add(test.flag)
+		p.Add(test.option)
 
 		retCode, err := p.Parse(nil, []string{})
 		assert.NotNil(t, err)
@@ -57,11 +57,11 @@ func TestInvalidStoreType(t *testing.T) {
 	}
 }
 
-func TestMultpleFlagSameStore(t *testing.T) {
+func TestMultpleOptionSameStore(t *testing.T) {
 	var foo string
 	p := cli.New(nil)
-	p.Add(&cli.Flag{Name: "foo", Store: &foo})
-	p.Add(&cli.Flag{Name: "bar", Store: &foo})
+	p.Add(&cli.Option{Name: "foo", Store: &foo})
+	p.Add(&cli.Option{Name: "bar", Store: &foo})
 
 	// Given
 	retCode, err := p.Parse(nil, []string{"--foo", "bang"})
@@ -80,14 +80,14 @@ func TestMultpleFlagSameStore(t *testing.T) {
 	assert.Equal(t, "foo", foo)
 }
 
-// TODO: Add argument cast tests to the `TestFlag` tests and rename them `TestDefaultScalar()`, etc...
+// TODO: Add argument cast tests to the `TestOption` tests and rename them `TestDefaultScalar()`, etc...
 // TODO: Add tests that cast values from a INIStore, This will exercise the 'string'
 // to 'type' path in `toXX` cast functions
 
-func TestFlagDefaultScalar(t *testing.T) {
+func TestOptionDefaultScalar(t *testing.T) {
 	var foo string
 	p := cli.New(nil)
-	p.Add(&cli.Flag{Name: "foo", Store: &foo, Default: "bash"})
+	p.Add(&cli.Option{Name: "foo", Store: &foo, Default: "bash"})
 
 	// Given no value
 	retCode, err := p.Parse(nil, []string{})
@@ -106,10 +106,10 @@ func TestFlagDefaultScalar(t *testing.T) {
 	assert.Equal(t, "bar", foo)
 }
 
-func TestFlagDefaultList(t *testing.T) {
+func TestOptionDefaultList(t *testing.T) {
 	var foo []string
 	p := cli.New(nil)
-	p.Add(&cli.Flag{Name: "foo", Store: &foo, Default: "bash,bar,foo"})
+	p.Add(&cli.Option{Name: "foo", Store: &foo, Default: "bash,bar,foo"})
 
 	// Given no value
 	retCode, err := p.Parse(nil, []string{})
@@ -129,12 +129,12 @@ func TestFlagDefaultList(t *testing.T) {
 	assert.Equal(t, []string{"bar"}, foo)
 }
 
-func TestFlagDefaultMap(t *testing.T) {
+func TestOptionDefaultMap(t *testing.T) {
 	var foo map[string]string
 	var count int
 
 	p := cli.New(nil)
-	p.Add(&cli.Flag{Name: "foo", Store: &foo, Default: "bar=foo,foo=bar"})
+	p.Add(&cli.Option{Name: "foo", Store: &foo, Default: "bar=foo,foo=bar"})
 
 	// Given
 	retCode, err := p.Parse(nil, []string{})
@@ -149,13 +149,13 @@ func TestFlagDefaultMap(t *testing.T) {
 	assert.Equal(t, foo["foo"], "bar")
 }
 
-func TestFlagWithBoolSlice(t *testing.T) {
+func TestOptionWithBoolSlice(t *testing.T) {
 	var foo []bool
 	var count int
 
 	p := cli.New(nil)
 	// Count implies 'CanRepeat=true'
-	p.Add(&cli.Flag{Name: "foo", Store: &foo, Count: &count, Aliases: []string{"f"}})
+	p.Add(&cli.Option{Name: "foo", Store: &foo, Count: &count, Aliases: []string{"f"}})
 
 	// Positive test
 	retCode, err := p.Parse(nil, []string{"--foo", "true", "-f", "false", "-f", "true"})
@@ -168,16 +168,16 @@ func TestFlagWithBoolSlice(t *testing.T) {
 	retCode, err = p.Parse(nil, []string{"--foo", "foo", "-f", "false", "-f", "true"})
 	assert.NotNil(t, err)
 	assert.Equal(t, cli.ErrorRetCode, retCode)
-	assert.Equal(t, "invalid value for flag 'foo': 'foo' is not a boolean", err.Error())
+	assert.Equal(t, "invalid value for option 'foo': 'foo' is not a boolean", err.Error())
 }
 
-func TestFlagWithSlice(t *testing.T) {
+func TestOptionWithSlice(t *testing.T) {
 	var foo []string
 	var count int
 
 	p := cli.New(nil)
 	// Count implies 'CanRepeat=true'
-	p.Add(&cli.Flag{Name: "foo", Store: &foo, Count: &count, Aliases: []string{"f"}})
+	p.Add(&cli.Option{Name: "foo", Store: &foo, Count: &count, Aliases: []string{"f"}})
 
 	// Given
 	retCode, err := p.Parse(nil, []string{"--foo", "bar,bang", "-f", "foo"})
@@ -189,13 +189,13 @@ func TestFlagWithSlice(t *testing.T) {
 	assert.Equal(t, []string{"bar,bang", "foo"}, foo)
 }
 
-func TestFlagStringMap(t *testing.T) {
+func TestOptionStringMap(t *testing.T) {
 	var foo map[string]string
 	var count int
 
 	p := cli.New(nil)
 	// Count implies 'CanRepeat=true'
-	p.Add(&cli.Flag{Name: "foo", Store: &foo, Count: &count, Aliases: []string{"f"}})
+	p.Add(&cli.Option{Name: "foo", Store: &foo, Count: &count, Aliases: []string{"f"}})
 
 	// Given
 	retCode, err := p.Parse(nil, []string{"--foo", "bar=foo", "-f", "foo=bar"})
@@ -210,13 +210,13 @@ func TestFlagStringMap(t *testing.T) {
 	assert.Equal(t, foo["foo"], "bar")
 }
 
-func TestFlagIntMap(t *testing.T) {
+func TestOptionIntMap(t *testing.T) {
 	var foo map[string]int
 	var count int
 
 	p := cli.New(nil)
 	// Count implies 'CanRepeat=true'
-	p.Add(&cli.Flag{Name: "foo", Store: &foo, Count: &count, Aliases: []string{"f"}})
+	p.Add(&cli.Option{Name: "foo", Store: &foo, Count: &count, Aliases: []string{"f"}})
 
 	// Positive test
 	retCode, err := p.Parse(nil, []string{"--foo", "bar=1,cat=3", "-f", "foo=2"})
@@ -234,16 +234,16 @@ func TestFlagIntMap(t *testing.T) {
 	retCode, err = p.Parse(nil, []string{"--foo", "bar=one,cat=2", "-f", "foo=3"})
 	require.NotNil(t, err)
 	assert.Equal(t, cli.ErrorRetCode, retCode)
-	assert.Equal(t, "invalid value for flag 'foo': 'one' is not an integer", err.Error())
+	assert.Equal(t, "invalid value for option 'foo': 'one' is not an integer", err.Error())
 }
 
-func TestFlagBoolMap(t *testing.T) {
+func TestOptionBoolMap(t *testing.T) {
 	var foo map[string]bool
 	var count int
 
 	p := cli.New(nil)
 	// Count implies 'CanRepeat=true'
-	p.Add(&cli.Flag{Name: "foo", Store: &foo, Count: &count, Aliases: []string{"f"}})
+	p.Add(&cli.Option{Name: "foo", Store: &foo, Count: &count, Aliases: []string{"f"}})
 
 	// Positive test
 	retCode, err := p.Parse(nil, []string{"--foo", "bar=true,cat=false", "-f", "foo=true"})
@@ -261,7 +261,7 @@ func TestFlagBoolMap(t *testing.T) {
 	retCode, err = p.Parse(nil, []string{"--foo", "bar=one,cat=false", "-f", "foo=true"})
 	require.NotNil(t, err)
 	assert.Equal(t, cli.ErrorRetCode, retCode)
-	assert.Equal(t, "invalid value for flag 'foo': 'one' is not a boolean", err.Error())
+	assert.Equal(t, "invalid value for option 'foo': 'one' is not a boolean", err.Error())
 }
 
 func TestInvalidMapType(t *testing.T) {
@@ -270,7 +270,7 @@ func TestInvalidMapType(t *testing.T) {
 
 	p := cli.New(nil)
 	// Count implies 'CanRepeat=true'
-	p.Add(&cli.Flag{Name: "foo", Store: &foo, Count: &count, Aliases: []string{"f"}})
+	p.Add(&cli.Option{Name: "foo", Store: &foo, Count: &count, Aliases: []string{"f"}})
 
 	// Given
 	retCode, err := p.Parse(nil, []string{"--foo", "bar=1"})
@@ -278,16 +278,16 @@ func TestInvalidMapType(t *testing.T) {
 	// Then
 	require.NotNil(t, err)
 	assert.Equal(t, cli.ErrorRetCode, retCode)
-	assert.Contains(t, err.Error(), "invalid 'Store' while adding flag 'foo': cannot use 'map[string]int64';")
+	assert.Contains(t, err.Error(), "invalid 'Store' while adding option 'foo': cannot use 'map[string]int64';")
 }
 
-func TestFlagWithMapAndJSON(t *testing.T) {
+func TestOptionWithMapAndJSON(t *testing.T) {
 	var foo map[string]string
 	var count int
 
 	p := cli.New(nil)
 	// Count implies 'CanRepeat=true'
-	p.Add(&cli.Flag{Name: "foo", Store: &foo, Count: &count, Aliases: []string{"f"}})
+	p.Add(&cli.Option{Name: "foo", Store: &foo, Count: &count, Aliases: []string{"f"}})
 
 	// Given
 	retCode, err := p.Parse(nil, []string{"--foo", `{"bar":"foo"}`, "-f", `{"foo": "bar", "bash": "bang"}`})
@@ -337,13 +337,11 @@ func TestSetValueInterface(t *testing.T) {
 	var cords cordinates
 
 	p := cli.New(nil)
-	p.Add(&cli.Flag{
-		Name:  "point",
-		Store: &cords,
-		//Flags: cli.CanRepeat | cli.NoSplit, // TODO: Make these flags
-		CanRepeat: true, // TODO: Make this implicit when using `Set()` interface
-		Aliases:   []string{"p"},
-		NoSplit:   true,
+	p.Add(&cli.Option{
+		Flags:   cli.CanRepeat | cli.NoSplit,
+		Aliases: []string{"p"},
+		Name:    "point",
+		Store:   &cords,
 	})
 
 	// Given
@@ -351,7 +349,7 @@ func TestSetValueInterface(t *testing.T) {
 
 	// Then
 	assert.NotNil(t, err)
-	assert.Equal(t, "invalid value for flag 'point': malformed coordinate point", err.Error())
+	assert.Equal(t, "invalid value for option 'point': malformed coordinate point", err.Error())
 
 	// Given
 	retCode, err = p.Parse(nil, []string{"--point", "1,2"})
@@ -377,3 +375,6 @@ func TestSetValueInterface(t *testing.T) {
 	}, cords.points)
 
 }
+
+// TODO: Test all possible type conversions
+// TODO: Add all the types that std 'flag' package supports

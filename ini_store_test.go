@@ -90,8 +90,8 @@ func TestFromStore(t *testing.T) {
 	var count int
 
 	p := cli.New(nil)
-	p.Add(&cli.Flag{Name: "foo", Count: &count, Store: &foo})
-	p.Add(&cli.Flag{Name: "bar", Count: &count, Store: &bar})
+	p.Add(&cli.Option{Name: "foo", Count: &count, Store: &foo})
+	p.Add(&cli.Option{Name: "bar", Count: &count, Store: &bar})
 
 	kv, err := cli.NewIniStore(bytes.NewReader([]byte(scalarFile)))
 	require.Nil(t, err)
@@ -142,17 +142,17 @@ func TestCastFile(t *testing.T) {
 
 	p := cli.New(nil)
 	p.Add(
-		&cli.Flag{Name: "str", Store: &str},
-		&cli.Flag{Name: "strSlice", Store: &strSlice},
-		&cli.Flag{Name: "strMap", Store: &strMap},
+		&cli.Option{Name: "str", Store: &str},
+		&cli.Option{Name: "strSlice", Store: &strSlice},
+		&cli.Option{Name: "strMap", Store: &strMap},
 
-		&cli.Flag{Name: "integer", Store: &integer},
-		&cli.Flag{Name: "intSlice", Store: &intSlice},
-		&cli.Flag{Name: "intMap", Store: &intMap},
+		&cli.Option{Name: "integer", Store: &integer},
+		&cli.Option{Name: "intSlice", Store: &intSlice},
+		&cli.Option{Name: "intMap", Store: &intMap},
 
-		&cli.Flag{Name: "boolean", Store: &boolean},
-		&cli.Flag{Name: "boolSlice", Store: &boolSlice},
-		&cli.Flag{Name: "boolMap", Store: &boolMap},
+		&cli.Option{Name: "boolean", Store: &boolean},
+		&cli.Option{Name: "boolSlice", Store: &boolSlice},
+		&cli.Option{Name: "boolMap", Store: &boolMap},
 	)
 	kv, err := cli.NewIniStore(bytes.NewReader([]byte(castFile)))
 	require.Nil(t, err)

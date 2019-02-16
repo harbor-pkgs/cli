@@ -60,8 +60,8 @@ func (s *scanner) scanFlags(argPos int) error {
 		return nil
 	}
 
-	if s.hasMode(AllowUnPrefixedFlags) {
-		if err := s.scanFlag(argPos, 0, true); err != nil {
+	if s.hasMode(AllowUnPrefixedOptions) {
+		if err := s.scanOption(argPos, 0, true); err != nil {
 			if !IsInvalidFlag(err) {
 				return err
 			}
@@ -71,7 +71,7 @@ func (s *scanner) scanFlags(argPos int) error {
 			fmt.Printf("has flag prefix: %d\n", charPos)
 			// TODO: If the charPos != 2, AND allowCombinedFlags then pass in true, else pass in false
 			// This allows us to disambiguate '-amend' (a bunch of combined flags) and '--amend' a single flag name
-			if err := s.scanFlag(argPos, charPos, s.hasMode(AllowCombinedFlags)); err != nil {
+			if err := s.scanOption(argPos, charPos, s.hasMode(AllowCombinedOptions)); err != nil {
 				return err
 			}
 		}
@@ -102,30 +102,30 @@ func (s *scanner) scanArgs() {
 	}
 }
 
-func (s *scanner) scanFlag(argPos, charPos int, allowCombinedFlags bool) error {
+func (s *scanner) scanOption(argPos, charPos int, allowCombinedFlags bool) error {
 	// sanity check
 	/*char := rune(s.argv[argPos][charPos])
 	fmt.Printf("rune %q\n", char)
 	fmt.Printf("isLetter %t\n", unicode.IsLetter(char))
 	if !unicode.IsLetter(char) {
 		// TODO: Should this be an error? Or should we allow upstream to decide if this error is returned to the user
-		return &InvalidFlag{Msg: fmt.Sprintf("invalid character at pos '%d' for flag '%s'",
+		return &InvalidFlag{Msg: fmt.Sprintf("invalid character at pos '%d' for option '%s'",
 			charPos, s.argv[argPos])}
 	}*/
 
-	// Match flags to aliases by first matching the entire flag,
-	// then attempt matching a subset of the flag. This allows
+	// Match flags to aliases by first matching the entire option,
+	// then attempt matching a subset of the option. This allows
 	// -amend to match before -a matches
-	flag := s.argv[argPos][charPos:]
-	fmt.Printf("attempt to match '%s'\n", flag)
+	option := s.argv[argPos][charPos:]
+	fmt.Printf("attempt to match '%s'\n", option)
 	var rule *rule
 	var end int
 
-	for i := len(flag); i > 0; i-- {
+	for i := len(option); i > 0; i-- {
 		// Find an alias that matches the prefix or complete arg
-		rule, end = s.matchAliases(flag[:i])
+		rule, end = s.matchAliases(option[:i])
 
-		// The flag did not match any aliases
+		// The option did not match any aliases
 		if rule == nil {
 			s.syntax.Add(&node{
 				Pos:    argPos,
@@ -134,16 +134,16 @@ func (s *scanner) scanFlag(argPos, charPos int, allowCombinedFlags bool) error {
 			return nil
 		}
 
-		fmt.Printf("mached '%s' to rule '%s' end=%d\n", flag[:i], rule.Name, end)
+		fmt.Printf("mached '%s' to rule '%s' end=%d\n", option[:i], rule.Name, end)
 		if rule.HasFlag(isExpectingValue) {
-			// If the entire flag matched the rule
-			fmt.Printf("end+1: %d flag: %d\n", end+1, len(flag))
-			if end+1 > len(flag) {
+			// If the entire option matched the rule
+			fmt.Printf("end+1: %d option: %d\n", end+1, len(option))
+			if end+1 > len(option) {
 				// Expect the next arg to hold our value
 				fmt.Printf("'%s' matched rule '%s'\n", s.argv[argPos], rule.Name)
-				// consume the next arg for the value for this flag
+				// consume the next arg for the value for this option
 				if len(s.argv) <= argPos+1 {
-					return fmt.Errorf("expected flag '%s' to have a value", s.argv[argPos])
+					return fmt.Errorf("expected option '%s' to have a value", s.argv[argPos])
 				}
 				flagNode := &node{
 					Pos:   argPos,
@@ -158,12 +158,12 @@ func (s *scanner) scanFlag(argPos, charPos int, allowCombinedFlags bool) error {
 				return nil
 			}
 			// Is the next character an '='?
-			if flag[end+1] == '=' {
-				if len(flag) <= end+2 {
-					return fmt.Errorf("expected flag '%s' to have a value after '='", s.argv[argPos])
+			if option[end+1] == '=' {
+				if len(option) <= end+2 {
+					return fmt.Errorf("expected option '%s' to have a value after '='", s.argv[argPos])
 				}
-				// the remainder of the flag is the value
-				value := flag[end+2:]
+				// the remainder of the option is the value
+				value := option[end+2:]
 				s.syntax.Add(&node{
 					Pos:   argPos,
 					Value: &value,
@@ -173,17 +173,17 @@ func (s *scanner) scanFlag(argPos, charPos int, allowCombinedFlags bool) error {
 			}
 
 			if s.hasMode(AllowCombinedValues) {
-				// the remainder of the flag is the value
-				value := flag[end:]
+				// the remainder of the option is the value
+				value := option[end:]
 				s.syntax.Add(&node{
 					Pos:   argPos,
 					Value: &value,
 					Rule:  rule,
 				})
 			}
-			// If we get here, then we matched part of the flag, but it's not our flag because
+			// If we get here, then we matched part of the option, but it's not our option because
 			// we expected a value and no value was provided. We know this because we sort our
-			// matchable aliases by length such that the longest flag will match first.
+			// matchable aliases by length such that the longest option will match first.
 		}
 		// Not Expecting value
 
@@ -195,22 +195,22 @@ func (s *scanner) scanFlag(argPos, charPos int, allowCombinedFlags bool) error {
 		})
 
 		// Are there more un matched characters?
-		if end != len(flag) {
+		if end != len(option) {
 			fmt.Println("more un-matched")
 			// and we can match combined flags?
 			if allowCombinedFlags {
-				// attempt to match the next flag
-				return s.scanFlag(argPos, end, true)
+				// attempt to match the next option
+				return s.scanOption(argPos, end, true)
 			}
-			// If we get here, then we matched part of the flag, but it's not our flag because
+			// If we get here, then we matched part of the option, but it's not our option because
 			// there are trailing characters and allowedCombinedFlags was not set.
 			continue
 		}
 		return nil
 		// Are there more un matched characters and we can match combined flags?
-		/*if charPos+1 != len(flag) && allowCombinedFlags {
-			// attempt to match the next flag
-			return s.scanFlag(argPos, charPos+1, true)
+		/*if charPos+1 != len(option) && allowCombinedFlags {
+			// attempt to match the next option
+			return s.scanOption(argPos, charPos+1, true)
 		}*/
 	}
 	return nil

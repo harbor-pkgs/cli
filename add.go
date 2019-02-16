@@ -12,24 +12,20 @@ type Variant interface {
 }
 
 // Any struct the implements this interface can be used by `Add()` to
-// store the value for a flag or argument.
+// store the value for a option or argument.
 // TODO: Reference an example
 type SetValue interface {
 	Set(string) error
 }
 
-type Flag struct {
+type Option struct {
 	Name      string
 	Help      string
 	Env       string
 	Default   string
 	Aliases   []string
-	Required  bool
-	CanRepeat bool
-	HelpFlag  bool
-	DependsOn string
-	Hidden    bool
-	NoSplit   bool
+	Flags     Flags
+	DependsOn string // TODO: Implement dependency
 
 	Store interface{}
 
@@ -58,13 +54,13 @@ type Flag struct {
 	IsSet *bool
 }
 
-func (f *Flag) name() string {
+func (f *Option) name() string {
 	return f.Name
 }
 
-func (f *Flag) toRule() (*rule, error) {
+func (f *Option) toRule() (*rule, error) {
 	if f.Name == "" {
-		return nil, fmt.Errorf("failed to add new flag; 'Name' is required")
+		return nil, fmt.Errorf("failed to add new option; 'Name' is required")
 	}
 
 	r := &rule{
@@ -72,15 +68,16 @@ func (f *Flag) toRule() (*rule, error) {
 		HelpMsg: f.Help,
 		Aliases: append(f.Aliases, f.Name),
 		EnvVar:  f.Env,
+		flags:   f.Flags,
 	}
 
 	if f.Store != nil {
 		r.SetFlag(isExpectingValue, true)
-		fnc, flag, err := newStoreFunc(f.Store)
+		fnc, option, err := newStoreFunc(f.Store)
 		if err != nil {
-			return nil, fmt.Errorf("invalid 'Store' while adding flag '%s': %s", f.Name, err)
+			return nil, fmt.Errorf("invalid 'Store' while adding option '%s': %s", f.Name, err)
 		}
-		r.SetFlag(flag, true)
+		r.SetFlag(option, true)
 		r.StoreFuncs = append(r.StoreFuncs, fnc)
 	}
 
@@ -88,34 +85,29 @@ func (f *Flag) toRule() (*rule, error) {
 		r.Default = &f.Default
 	}
 
-	r.SetFlag(isFlag, true)
-	r.SetFlag(isHidden, f.Hidden)
-	r.SetFlag(isRequired, f.Required)
-	r.SetFlag(canRepeat, f.CanRepeat)
-	r.SetFlag(isHelpRule, f.HelpFlag)
-	r.SetFlag(noSplit, f.NoSplit)
+	r.SetFlag(isOption, true)
 
 	if f.Count != nil {
-		r.SetFlag(canRepeat, true)
+		r.SetFlag(CanRepeat, true)
 		r.StoreFuncs = append(r.StoreFuncs, toCount(f.Count))
 	}
 	if f.IsSet != nil {
 		r.StoreFuncs = append(r.StoreFuncs, toSet(f.IsSet))
 	}
 
+	// TODO: Should check for a StoreFunc() instead
 	if f.IsSet == nil && f.Store == nil && f.Count == nil {
-		return nil, fmt.Errorf("refusing to add flag '%s'; provide an 'IsSet', 'Store' or 'Count' field", f.Name)
+		return nil, fmt.Errorf("refusing to add option '%s'; provide an 'IsSet', 'Store' or 'Count' field", f.Name)
 	}
 	return r, nil
 }
 
 type Argument struct {
-	Name      string
-	Help      string
-	Env       string
-	Default   string
-	Required  bool
-	CanRepeat bool
+	Name    string
+	Help    string
+	Env     string
+	Default string
+	Flags   Flags
 
 	Store interface{}
 	Count *int
@@ -135,14 +127,15 @@ func (a *Argument) toRule() (*rule, error) {
 		Name:    a.Name,
 		HelpMsg: a.Help,
 		EnvVar:  a.Env,
+		flags:   a.Flags,
 	}
 
 	if a.Store != nil {
-		fnc, flag, err := newStoreFunc(a.Store)
+		fnc, option, err := newStoreFunc(a.Store)
 		if err != nil {
 			return nil, fmt.Errorf("invalid 'Store' while adding argument '%s': %s", a.Name, err)
 		}
-		r.SetFlag(flag, true)
+		r.SetFlag(option, true)
 		r.StoreFuncs = append(r.StoreFuncs, fnc)
 	}
 
@@ -150,11 +143,10 @@ func (a *Argument) toRule() (*rule, error) {
 		r.Default = &a.Default
 	}
 	r.SetFlag(isArgument, true)
-	r.SetFlag(isRequired, a.Required)
-	r.SetFlag(canRepeat, a.CanRepeat)
 
 	if a.Count != nil {
-		r.SetFlag(canRepeat, true)
+		// TODO: Test can repeat for args
+		r.SetFlag(CanRepeat, true)
 		r.StoreFuncs = append(r.StoreFuncs, toCount(a.Count))
 	}
 	if a.IsSet != nil {
@@ -169,11 +161,11 @@ func (a *Argument) toRule() (*rule, error) {
 }
 
 type EnvVar struct {
-	Name     string
-	Help     string
-	Env      string
-	Default  string
-	Required bool
+	Name    string
+	Help    string
+	Env     string
+	Default string
+	Flags   Flags // TODO: Test required for env
 
 	Store interface{}
 	IsSet *bool
@@ -192,6 +184,7 @@ func (e *EnvVar) toRule() (*rule, error) {
 		Name:    e.Name,
 		HelpMsg: e.Help,
 		EnvVar:  e.Env,
+		flags:   e.Flags,
 	}
 
 	if r.EnvVar == "" {
@@ -199,18 +192,17 @@ func (e *EnvVar) toRule() (*rule, error) {
 	}
 
 	if e.Store != nil {
-		fnc, flag, err := newStoreFunc(e.Store)
+		fnc, flags, err := newStoreFunc(e.Store)
 		if err != nil {
 			return nil, fmt.Errorf("invalid 'Store' while adding EnvVar '%s': %s", e.Name, err)
 		}
-		r.SetFlag(flag, true)
+		r.SetFlag(flags, true)
 		r.StoreFuncs = append(r.StoreFuncs, fnc)
 	}
 
 	if e.Default != "" {
 		r.Default = &e.Default
 	}
-	r.SetFlag(isRequired, e.Required)
 	r.SetFlag(isExpectingValue, true)
 	r.SetFlag(isEnvVar, true)
 
@@ -236,7 +228,7 @@ func newStoreFunc(dest interface{}) (StoreFunc, Flags, error) {
 				}
 			}
 			return nil
-		}, ListKind | isString | canRepeat, nil
+		}, ListKind | isString | CanRepeat, nil
 	}
 
 	d := reflect.ValueOf(dest)

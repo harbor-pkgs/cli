@@ -80,7 +80,7 @@ func (s *linearSyntax) Get(ctx context.Context, key string, flags Flags) (interf
 		return "", 0, nil
 	}
 
-	// TODO: If user requests positional only arguments, eliminate args/flags we find that are not in our range
+	// TODO: If user requests positional only arguments, eliminate args/options we find that are not in our range
 
 	var values []string
 	var count int
@@ -107,9 +107,9 @@ func convToKind(values []string, flags Flags, count int) (interface{}, int, erro
 		//fmt.Printf("Get Ret: %s, %d\n", values[0], count)
 		return values[0], count, nil
 	case flags.Has(ListKind):
-		fmt.Printf("flag: %t\n", flags.Has(noSplit))
+		fmt.Printf("flag: %t\n", flags.Has(NoSplit))
 		// If only one item is provided, it must be a comma separated list
-		if count == 1 && !flags.Has(noSplit) {
+		if count == 1 && !flags.Has(NoSplit) {
 			return ToSlice(values[0]), count, nil
 		}
 

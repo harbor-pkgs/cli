@@ -22,21 +22,21 @@ const (
 	defaultSource = "cli-default"
 )
 
-// This is just so Add() won't complain we didn't provide a 'IsSet' for our auto added Help flag
+// This is just so Add() won't complain we didn't provide a 'IsSet' for our auto added Help option
 var hasHelp bool
 
 type Mode int64
 
 const (
-	// TODO: Support combined flag parsing (-s -o can be expressed as -so)
+	// TODO: Support combined option parsing (-s -o can be expressed as -so)
 	// Cannot be combined with 'AllowUnknownArgs'
-	AllowCombinedFlags Mode = 1 << iota
-	// TODO: Support values that directly follow a flag ( '-f value' can be expressed as '-fvalue' )
+	AllowCombinedOptions Mode = 1 << iota
+	// TODO: Support values that directly follow a option ( '-f value' can be expressed as '-fvalue' )
 	AllowCombinedValues
-	// TODO: Support flags without a prefix IE `ps aux`
-	// Allow UnPrefixedFlags implies 'AllowCombinedFlags'
-	AllowUnPrefixedFlags
-	// Arguments that don't match a flag or argument defined by the parser do not result in an error
+	// TODO: Support options without a prefix IE `ps aux`
+	// AllowUnPrefixedOptions implies 'AllowCombinedOptions'
+	AllowUnPrefixedOptions
+	// Arguments that don't match a option or argument defined by the parser do not result in an error
 	// Unknown args can be retrieved using Parser.UnProcessedArgs()
 	AllowUnknownArgs
 	// Avoid adding a --help, -h option
@@ -79,7 +79,7 @@ type Parser struct {
 	parent *Parser
 	// A collection of stores provided by the user for retrieving values
 	stores []FromStore
-	// Errors accumulated when adding flags
+	// Errors accumulated when adding options
 	errs []error
 	// Each new argument is assigned a sequence depending on when they were added. This
 	// allows us to infer which position the argument should be expected when parsing the command line
@@ -158,7 +158,7 @@ func (p *Parser) Parse(ctx context.Context, argv []string) (int, error) {
 
 	// Sanity Check
 	if len(p.rules) == 0 {
-		return ErrorRetCode, errors.New("no flags or arguments defined; call Add() before calling Parse()")
+		return ErrorRetCode, errors.New("no options or arguments defined; call Add() before calling Parse()")
 	}
 
 	fmt.Printf("parse()\n")
@@ -170,14 +170,14 @@ func (p *Parser) Parse(ctx context.Context, argv []string) (int, error) {
 		if argv != nil {
 			p.argv = argv
 		}
-		// If user requested we add a help flag, and if one is not already defined
+		// If user requested we add a help option, and if one is not already defined
 		if !p.HasMode(NoHelp) && p.rules.GetRuleByFlag(isHelpRule) == nil {
-			p.Add(&Flag{
-				Help:     "display this help message and exit",
-				Name:     "help",
-				HelpFlag: true,
-				IsSet:    &hasHelp,
-				Aliases:  []string{"h"},
+			p.Add(&Option{
+				Help:    "display this help message and exit",
+				Name:    "help",
+				Flags:   isHelpRule,
+				IsSet:   &hasHelp,
+				Aliases: []string{"h"},
 			})
 		}
 	}
@@ -202,10 +202,10 @@ func (p *Parser) Parse(ctx context.Context, argv []string) (int, error) {
 	//fmt.Printf("rules: %s\n", p.rules.String())
 
 	// Scan the argv and attempt to assign rules to argv positions, this is
-	// only a best effort since a sub command might add new flags and args.
+	// only a best effort since a sub command might add new options and args.
 	if p.syntax, err = scanArgv(p); err != nil {
 		fmt.Println("scan fail")
-		// report flags that expect values
+		// report options that expect values
 		return ErrorRetCode, err
 	}
 
@@ -216,11 +216,11 @@ func (p *Parser) Parse(ctx context.Context, argv []string) (int, error) {
 	}*/
 
 	fmt.Printf("syntax: %s\n", p.syntax.String())
-	// --help is a special case flag, as it short circuits the normal store
+	// --help is a special case option, as it short circuits the normal store
 	// and validation of arguments. This allows the user to pass other arguments
 	// along side -h and still get a help message before getting invalid arg errors
-	// TODO: Support other short circuit flags besides -h, in the case a user wishes to
-	// TODO: Not use -h has the help flag.
+	// TODO: Support other short circuit options besides -h, in the case a user wishes to
+	// TODO: Not use -h has the help option.
 	if p.syntax.FindWithFlag(isHelpRule) != nil {
 		fmt.Printf("type %s\n", reflect.TypeOf(&HelpError{}))
 		return ErrorRetCode, &HelpError{}
@@ -273,7 +273,7 @@ func (p *Parser) validateAndStore(rs *resultStore) (int, error) {
 				fmt.Printf("default: %+v\n", value)
 			} else {
 				// and is required
-				if rule.HasFlag(isRequired) {
+				if rule.HasFlag(Required) {
 					return ErrorRetCode, errors.New(rule.IsRequiredMessage())
 				}
 				// Nothing else to be done; no value to set
@@ -281,10 +281,10 @@ func (p *Parser) validateAndStore(rs *resultStore) (int, error) {
 			}
 		}
 
-		// if the user dis-allows the flag to be provided more than once
+		// if the user dis-allows the option to be provided more than once
 		if count > 1 {
-			if rule.HasFlag(isFlag) && !rule.HasFlag(canRepeat) {
-				return ErrorRetCode, fmt.Errorf("unexpected duplicate flag '%s' provided", rule.Name)
+			if rule.HasFlag(isOption) && !rule.HasFlag(CanRepeat) {
+				return ErrorRetCode, fmt.Errorf("unexpected duplicate option '%s' provided", rule.Name)
 			}
 		}
 

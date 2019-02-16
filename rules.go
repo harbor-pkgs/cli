@@ -64,7 +64,7 @@ func (r ruleList) ValidateRules() (ruleList, error) {
 			for ; next < len(r); next++ {
 				// If the names are the same
 				if rule.Name == r[next].Name {
-					return nil, fmt.Errorf("duplicate argument or flag '%s' defined", rule.Name)
+					return nil, fmt.Errorf("duplicate argument or option '%s' defined", rule.Name)
 				}
 				// If the alias is a duplicate
 				for _, alias := range r[next].Aliases {
@@ -82,7 +82,7 @@ func (r ruleList) ValidateRules() (ruleList, error) {
 					}
 				}
 				if rule.Name == r[next].Name {
-					return nil, fmt.Errorf("duplicate argument or flag '%s' defined", rule.Name)
+					return nil, fmt.Errorf("duplicate argument or option '%s' defined", rule.Name)
 				}
 			}
 		}
@@ -122,7 +122,7 @@ func (r ruleList) ValidateRules() (ruleList, error) {
 		}
 
 		// Check for ambiguous greedy arguments
-		if rule.HasFlag(canRepeat) {
+		if rule.HasFlag(CanRepeat) {
 			if greedyRule == nil {
 				greedyRule = rule
 			}
@@ -192,8 +192,8 @@ func (r rule) Flags() Flags {
 
 func (r rule) Type() string {
 	switch {
-	case r.HasFlag(isFlag):
-		return "flag"
+	case r.HasFlag(isOption):
+		return "option"
 	case r.HasFlag(isArgument):
 		return "argument"
 	case r.HasFlag(isCommand):

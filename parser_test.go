@@ -15,7 +15,7 @@ func TestParserNoRules(t *testing.T) {
 	retCode, err := p.Parse(nil, nil)
 	assert.NotNil(t, err)
 	assert.Equal(t, cli.ErrorRetCode, retCode)
-	assert.Equal(t, "no flags or arguments defined; call Add() before calling Parse()", err.Error())
+	assert.Equal(t, "no options or arguments defined; call Add() before calling Parse()", err.Error())
 }
 
 func TestParserNoStore(t *testing.T) {
@@ -23,7 +23,7 @@ func TestParserNoStore(t *testing.T) {
 		v   cli.Variant
 		err string
 	}{
-		{v: &cli.Flag{Name: "foo"}, err: "refusing to add flag 'foo'; provide an 'IsSet', 'Store' or 'Count' field"},
+		{v: &cli.Option{Name: "foo"}, err: "refusing to add option 'foo'; provide an 'IsSet', 'Store' or 'Count' field"},
 		{v: &cli.Argument{Name: "foo"}, err: "refusing to add argument 'foo'; provide an 'IsSet', 'Store' or 'Count' field"},
 		{v: &cli.EnvVar{Name: "foo"}, err: "refusing to add envvar 'foo'; provide an 'IsSet' or 'Store' field"},
 	}
@@ -40,10 +40,10 @@ func TestParserNoStore(t *testing.T) {
 	}
 }
 
-func TestParserAddHelpWithFlag(t *testing.T) {
-	var hasFlag bool
+func TestParserAddHelpWithOption(t *testing.T) {
+	var hasOption bool
 	p := cli.New(nil)
-	p.Add(&cli.Flag{Name: "foo", IsSet: &hasFlag})
+	p.Add(&cli.Option{Name: "foo", IsSet: &hasOption})
 
 	// Given -h
 	retCode, err := p.Parse(nil, []string{"-h"})
@@ -62,7 +62,7 @@ func TestParserAddHelpWithFlag(t *testing.T) {
 func TestParserNoArgs(t *testing.T) {
 	var foo string
 	p := cli.New(nil)
-	p.Add(&cli.Flag{Name: "foo", Store: &foo})
+	p.Add(&cli.Option{Name: "foo", Store: &foo})
 
 	// Given no arguments
 	retCode, err := p.Parse(nil, []string{})
@@ -73,10 +73,10 @@ func TestParserNoArgs(t *testing.T) {
 	assert.Equal(t, "", foo)
 }
 
-func TestFooFlag(t *testing.T) {
+func TestFooOption(t *testing.T) {
 	var foo string
 	p := cli.New(nil)
-	p.Add(&cli.Flag{Name: "foo", Store: &foo})
+	p.Add(&cli.Option{Name: "foo", Store: &foo})
 
 	// Given double prefix
 	retCode, err := p.Parse(nil, []string{"--foo", "bar"})
@@ -95,10 +95,10 @@ func TestFooFlag(t *testing.T) {
 	assert.Equal(t, "bar", foo)
 }
 
-func TestFlagExpectedValue(t *testing.T) {
+func TestOptionExpectedValue(t *testing.T) {
 	var foo string
 	p := cli.New(nil)
-	p.Add(&cli.Flag{Name: "foo", Store: &foo})
+	p.Add(&cli.Option{Name: "foo", Store: &foo})
 
 	// Given
 	retCode, err := p.Parse(nil, []string{"--foo"})
@@ -106,15 +106,15 @@ func TestFlagExpectedValue(t *testing.T) {
 	// Then
 	assert.NotNil(t, err)
 	assert.Equal(t, cli.ErrorRetCode, retCode)
-	assert.Equal(t, "expected flag '--foo' to have a value", err.Error())
+	assert.Equal(t, "expected option '--foo' to have a value", err.Error())
 	assert.Equal(t, "", foo)
 }
 
-func TestFlagCount(t *testing.T) {
+func TestOptionCount(t *testing.T) {
 	var count int
 
 	p := cli.New(nil)
-	p.Add(&cli.Flag{Name: "verbose", Count: &count, Aliases: []string{"v"}})
+	p.Add(&cli.Option{Name: "verbose", Count: &count, Aliases: []string{"v"}})
 
 	// Given
 	retCode, err := p.Parse(nil, []string{"--verbose", "-v"})
@@ -125,12 +125,12 @@ func TestFlagCount(t *testing.T) {
 	assert.Equal(t, 2, count)
 }
 
-func TestFlagCountWithValue(t *testing.T) {
+func TestOptionCountWithValue(t *testing.T) {
 	var count int
 	var foo []string
 
 	p := cli.New(nil)
-	p.Add(&cli.Flag{Name: "foo", Store: &foo, Count: &count, Aliases: []string{"f"}})
+	p.Add(&cli.Option{Name: "foo", Store: &foo, Count: &count, Aliases: []string{"f"}})
 
 	// Given
 	retCode, err := p.Parse(nil, []string{"--foo", "bar", "-f", "bang"})
@@ -143,12 +143,12 @@ func TestFlagCountWithValue(t *testing.T) {
 	assert.Equal(t, []string{"bang", "bar"}, foo)
 }
 
-func TestFlagIsRequired(t *testing.T) {
+func TestOptionIsRequired(t *testing.T) {
 	var foo, bar string
 
 	p := cli.New(nil)
-	p.Add(&cli.Flag{Name: "foo", Required: true, Store: &foo, Aliases: []string{"f"}})
-	p.Add(&cli.Flag{Name: "bar", Store: &bar, Aliases: []string{"b"}})
+	p.Add(&cli.Option{Name: "foo", Flags: cli.Required, Store: &foo, Aliases: []string{"f"}})
+	p.Add(&cli.Option{Name: "bar", Store: &bar, Aliases: []string{"b"}})
 
 	// Given
 	retCode, err := p.Parse(nil, []string{"-b", "bar"})
@@ -156,15 +156,15 @@ func TestFlagIsRequired(t *testing.T) {
 	// Then
 	assert.NotNil(t, err)
 	assert.Equal(t, cli.ErrorRetCode, retCode)
-	assert.Equal(t, "flag '--foo' is required", err.Error())
+	assert.Equal(t, "option '--foo' is required", err.Error())
 }
 
-func TestFlagReplace(t *testing.T) {
+func TestOptionReplace(t *testing.T) {
 	var count int
 	var foo []string
 
 	p := cli.New(nil)
-	p.Add(&cli.Flag{Name: "foo", Store: &foo, Default: "bash", Count: &count, Aliases: []string{"f"}})
+	p.Add(&cli.Option{Name: "foo", Store: &foo, Default: "bash", Count: &count, Aliases: []string{"f"}})
 
 	// Given
 	retCode, err := p.Parse(nil, []string{"--foo", "bar", "-f", "bang"})
@@ -247,11 +247,11 @@ func TestArgumentOverride(t *testing.T) {
 	assert.Equal(t, "foo-thing", foo)
 }
 
-func TestArgumentAndFlags(t *testing.T) {
+func TestArgumentAndOptions(t *testing.T) {
 	var bar, foo, flag string
 
 	p := cli.New(nil)
-	p.Add(&cli.Flag{Name: "flag", Store: &flag})
+	p.Add(&cli.Option{Name: "flag", Store: &flag})
 	p.Add(&cli.Argument{Name: "bar", Store: &bar})
 	p.Add(&cli.Argument{Name: "foo", Store: &foo})
 
@@ -271,7 +271,7 @@ func TestRuleNameCollision(t *testing.T) {
 	p := cli.New(nil)
 
 	// Given
-	p.Add(&cli.Flag{Name: "bar", Store: &flag})
+	p.Add(&cli.Option{Name: "bar", Store: &flag})
 	p.Add(&cli.Argument{Name: "bar", Store: &bar})
 	p.Add(&cli.Argument{Name: "foo", Store: &foo})
 	retCode, err := p.Parse(nil, []string{})
@@ -279,14 +279,14 @@ func TestRuleNameCollision(t *testing.T) {
 	// Then
 	require.NotNil(t, err)
 	assert.Equal(t, cli.ErrorRetCode, retCode)
-	assert.Equal(t, "duplicate argument or flag 'bar' defined", err.Error())
+	assert.Equal(t, "duplicate argument or option 'bar' defined", err.Error())
 }
 
 func TestArgumentIsRequired(t *testing.T) {
 	var foo, bar string
 
 	p := cli.New(nil)
-	p.Add(&cli.Argument{Name: "foo", Required: true, Store: &foo})
+	p.Add(&cli.Argument{Name: "foo", Flags: cli.Required, Store: &foo})
 	p.Add(&cli.Argument{Name: "bar", Store: &bar, Default: "foo"})
 
 	// Given
@@ -311,14 +311,14 @@ func TestInvalidRuleNames(t *testing.T) {
 	p := cli.New(nil)
 
 	// Given
-	p.Add(&cli.Flag{Name: "*bar", Store: &flag})
+	p.Add(&cli.Option{Name: "*bar", Store: &flag})
 	p.Add(&cli.Argument{Name: "foo", Store: &foo})
 	retCode, err := p.Parse(nil, []string{})
 
 	// Then
 	require.NotNil(t, err)
 	assert.Equal(t, cli.ErrorRetCode, retCode)
-	assert.Equal(t, "'*bar' is an invalid name for flag; prefixes on names are not allowed", err.Error())
+	assert.Equal(t, "'*bar' is an invalid name for option; prefixes on names are not allowed", err.Error())
 }
 
 func TestInvalidAliases(t *testing.T) {
@@ -326,14 +326,14 @@ func TestInvalidAliases(t *testing.T) {
 	p := cli.New(nil)
 
 	// Given
-	p.Add(&cli.Flag{Name: "bar", Aliases: []string{"-b"}, Store: &flag})
+	p.Add(&cli.Option{Name: "bar", Aliases: []string{"-b"}, Store: &flag})
 	p.Add(&cli.Argument{Name: "foo", Store: &foo})
 	retCode, err := p.Parse(nil, []string{})
 
 	// Then
 	require.NotNil(t, err)
 	assert.Equal(t, cli.ErrorRetCode, retCode)
-	assert.Equal(t, "'-b' is an invalid alias for flag; prefixes on aliases are not allowed", err.Error())
+	assert.Equal(t, "'-b' is an invalid alias for option; prefixes on aliases are not allowed", err.Error())
 }
 
 // TODO: Test interspersed arguments <arg0> <arg1> <cmd> <arg0>

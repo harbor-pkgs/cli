@@ -27,7 +27,7 @@ func (p *Parser) GenerateHelp() string {
 		result.WriteString(fmt.Sprintf("Usage: %s\n", p.cfg.Usage))
 	} else {
 		result.WriteString(fmt.Sprintf("Usage: %s %s %s\n", p.cfg.Name,
-			p.generateUsage(isFlag),
+			p.generateUsage(isOption),
 			p.generateUsage(isArgument)))
 	}
 
@@ -49,9 +49,9 @@ func (p *Parser) GenerateHelp() string {
 		result.WriteString(argument)
 	}
 
-	options := p.generateHelpSection(isFlag)
+	options := p.generateHelpSection(isOption)
 	if options != "" {
-		result.WriteString("\nFlags:\n")
+		result.WriteString("\nOptions:\n")
 		result.WriteString(options)
 	}
 
@@ -111,8 +111,8 @@ func (p *Parser) GenerateINIConfig() []byte {
 func (p *Parser) generateUsage(flags Flags) string {
 	var result bytes.Buffer
 
-	if flags == isFlag {
-		return "[flags]"
+	if flags == isOption {
+		return "[options]"
 	}
 
 	for _, rule := range p.rules {

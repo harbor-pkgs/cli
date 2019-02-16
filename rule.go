@@ -34,14 +34,16 @@ const (
 	allFlags  Flags = 0xFFFFFFFF
 	isCommand Flags = 1 << iota
 	isArgument
-	isRequired
-	isFlag
+	isOption
 	isEnvVar
-	canRepeat
 	isExpectingValue
-	isHidden
-	noSplit
-	isHelpRule
+	isHelpRule // TODO: This should be a generic special case flag
+
+	// Public flags
+	Required
+	CanRepeat
+	NoSplit
+	Hidden
 
 	// Kind flags
 	ScalarKind
@@ -92,14 +94,14 @@ func (r *rule) StoreValue(value interface{}, count int) error {
 
 func (r *rule) GenerateUsage() string {
 	switch {
-	case r.HasFlag(isFlag):
-		if r.HasFlag(isRequired) {
+	case r.HasFlag(isOption):
+		if r.HasFlag(Required) {
 			return fmt.Sprintf("%s", r.Aliases[0])
 		}
 		return fmt.Sprintf("[%s]", r.Aliases[0])
 	case r.HasFlag(isArgument):
 		// TODO: Display CanRepeat and interspersed arguments
-		if r.HasFlag(isRequired) {
+		if r.HasFlag(Required) {
 			return fmt.Sprintf("<%s>", r.Name)
 		}
 		return fmt.Sprintf("[%s]", r.Name)
@@ -200,7 +202,7 @@ func (r *rule) GenerateHelp() (string, string) {
 	var valueType string
 	// if the option expects a value optionally display this depending on type
 	// TODO: Allow the user to override this when custom type provides Get() interface
-	if r.HasFlag(isFlag) && r.HasFlag(isExpectingValue) {
+	if r.HasFlag(isOption) && r.HasFlag(isExpectingValue) {
 		valueType = " " + r.TypeUsage()
 	}
 
@@ -228,8 +230,8 @@ func (r *rule) IsRequiredMessage() string {
 	switch {
 	case r.HasFlag(isArgument):
 		return fmt.Sprintf("argument '%s' is required", r.Name)
-	case r.HasFlag(isFlag):
-		return fmt.Sprintf("flag '--%s' is required", r.Name)
+	case r.HasFlag(isOption):
+		return fmt.Sprintf("option '--%s' is required", r.Name)
 	}
 	return fmt.Sprintf("'%s' is required", r.Name)
 }

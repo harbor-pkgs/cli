@@ -25,7 +25,7 @@ func Example_complete() {
 	})
 
 	// Store Integers directly into a struct field with a default value
-	parser.Add(&cli.Flag{
+	parser.Add(&cli.Option{
 		Help:    "Set our power level to over 5000!",
 		Store:   &conf.PowerLevel,
 		Aliases: []string{"p"},
@@ -35,7 +35,7 @@ func Example_complete() {
 	})
 
 	// Add an environment variable as a possible source for the argument
-	parser.Add(&cli.Flag{
+	parser.Add(&cli.Option{
 		Help:    "Send a message to your enemies, make them quake in fear",
 		Default: "over-ten-thousand",
 		Store:   &conf.Message,
@@ -45,7 +45,7 @@ func Example_complete() {
 	})
 
 	// Pass a comma separated list of strings and get a []string slice
-	parser.Add(&cli.Flag{
+	parser.Add(&cli.Option{
 		Help:    "List of weapons to choose from separated by a comma",
 		Default: "vi,emacs,pico",
 		Store:   conf.Weapons,
@@ -55,7 +55,7 @@ func Example_complete() {
 	})
 
 	// Count the number of times an option is seen
-	parser.Add(&cli.Flag{
+	parser.Add(&cli.Option{
 		Help:    "Declare to the world after each evil is vanquished",
 		Aliases: []string{"v"},
 		Count:   &conf.Verbose,
@@ -63,7 +63,7 @@ func Example_complete() {
 	})
 
 	// Set bool to true if the option is present on the command line
-	parser.Add(&cli.Flag{
+	parser.Add(&cli.Option{
 		Help:    "Turn on universe debug, it must give up it's secrets",
 		Aliases: []string{"d"},
 		Name:    "debug",
@@ -71,7 +71,7 @@ func Example_complete() {
 	})
 
 	// --help option is provided by default, however you can override
-	parser.Add(&cli.Flag{
+	parser.Add(&cli.Option{
 		Help:    "Show this help message and exit",
 		Aliases: []string{"H"},
 		Name:    "help",
@@ -79,18 +79,18 @@ func Example_complete() {
 
 	// Add Required arguments
 	parser.Add(&cli.Argument{
-		Help:     "The name of the hero who fights for justice",
-		Store:    &conf.Name,
-		Name:     "name",
-		Required: true,
+		Help:  "The name of the hero who fights for justice",
+		Store: &conf.Name,
+		Name:  "name",
+		Flags: cli.Required,
 	})
 
 	// Add optional arguments that can repeat
 	parser.Add(&cli.Argument{
-		Help:      "List of villains to vanquish",
-		Name:      "the-villains",
-		Store:     conf.Villains,
-		CanRepeat: true,
+		Help:  "List of villains to vanquish",
+		Name:  "the-villains",
+		Store: conf.Villains,
+		Flags: cli.CanRepeat,
 	})
 
 	// ParseOrExit() is just a convenience, you can call
