@@ -28,10 +28,10 @@ type scanner struct {
 	mode    Mode
 }
 
-// Scan the argv for flags and add them to our linear syntax store
+// Scan the argv for options and arguments and add them to our linear syntax store
 func scanArgv(p *Parser) (*linearSyntax, error) {
-	// Collect all the flag aliases and sort them by length such that when looking for matching flags we match
-	// flag names before short aliases (-a is not a match for -amend)
+	// Collect all the option aliases and sort them by length such that when looking for matching option we match
+	// option names before short aliases (-a is not a match for -amend)
 	var sortedAliases sortByLen = p.rules.GetAliases()
 	sort.Sort(sortedAliases)
 
@@ -40,21 +40,21 @@ func scanArgv(p *Parser) (*linearSyntax, error) {
 		aliases: sortedAliases,
 		rules:   p.rules,
 		argv:    p.argv,
-		mode:    p.mode,
+		mode:    p.cfg.Mode,
 	}
 
-	// First scan for flags
-	if err := s.scanFlags(0); err != nil {
+	// First scan for options
+	if err := s.scanOptions(0); err != nil {
 		return nil, err
 	}
 
-	// Scan for non-flag arguments and sub commands
+	// Scan for non-option arguments and sub commands
 	s.scanArgs()
 
 	return s.syntax, nil
 }
 
-func (s *scanner) scanFlags(argPos int) error {
+func (s *scanner) scanOptions(argPos int) error {
 	if len(s.argv) == argPos {
 		fmt.Println("no more args to scan")
 		return nil
@@ -68,16 +68,16 @@ func (s *scanner) scanFlags(argPos int) error {
 		}
 	} else {
 		if charPos := hasFlagPrefix(s.argv[argPos]); charPos != 0 {
-			fmt.Printf("has flag prefix: %d\n", charPos)
-			// TODO: If the charPos != 2, AND allowCombinedFlags then pass in true, else pass in false
-			// This allows us to disambiguate '-amend' (a bunch of combined flags) and '--amend' a single flag name
+			fmt.Printf("has option prefix: %d\n", charPos)
+			// TODO: If the charPos != 2, AND allowCombinedOptions then pass in true, else pass in false
+			// This allows us to disambiguate '-amend' (a bunch of combined option) and '--amend' a single option name
 			if err := s.scanOption(argPos, charPos, s.hasMode(AllowCombinedOptions)); err != nil {
 				return err
 			}
 		}
 	}
 
-	return s.scanFlags(argPos + 1)
+	return s.scanOptions(argPos + 1)
 }
 
 func (s *scanner) scanArgs() {
@@ -102,7 +102,7 @@ func (s *scanner) scanArgs() {
 	}
 }
 
-func (s *scanner) scanOption(argPos, charPos int, allowCombinedFlags bool) error {
+func (s *scanner) scanOption(argPos, charPos int, allowCombinedOptions bool) error {
 	// sanity check
 	/*char := rune(s.argv[argPos][charPos])
 	fmt.Printf("rune %q\n", char)
@@ -113,7 +113,7 @@ func (s *scanner) scanOption(argPos, charPos int, allowCombinedFlags bool) error
 			charPos, s.argv[argPos])}
 	}*/
 
-	// Match flags to aliases by first matching the entire option,
+	// Match option to aliases by first matching the entire option,
 	// then attempt matching a subset of the option. This allows
 	// -amend to match before -a matches
 	option := s.argv[argPos][charPos:]
@@ -134,7 +134,7 @@ func (s *scanner) scanOption(argPos, charPos int, allowCombinedFlags bool) error
 			return nil
 		}
 
-		fmt.Printf("mached '%s' to rule '%s' end=%d\n", option[:i], rule.Name, end)
+		fmt.Printf("'%s' possible match to rule '%s' end=%d\n", option[:i], rule.Name, end)
 		if rule.HasFlag(isExpectingValue) {
 			// If the entire option matched the rule
 			fmt.Printf("end+1: %d option: %d\n", end+1, len(option))
@@ -145,15 +145,15 @@ func (s *scanner) scanOption(argPos, charPos int, allowCombinedFlags bool) error
 				if len(s.argv) <= argPos+1 {
 					return fmt.Errorf("expected option '%s' to have a value", s.argv[argPos])
 				}
-				flagNode := &node{
+				optionNode := &node{
 					Pos:   argPos,
 					Value: &s.argv[argPos+1],
 					Rule:  rule,
 				}
-				s.syntax.Add(flagNode)
+				s.syntax.Add(optionNode)
 				s.syntax.Add(&node{
 					Pos:      argPos + 1,
-					ValueFor: flagNode,
+					ValueFor: optionNode,
 				})
 				return nil
 			}
@@ -180,10 +180,16 @@ func (s *scanner) scanOption(argPos, charPos int, allowCombinedFlags bool) error
 					Value: &value,
 					Rule:  rule,
 				})
+				return nil
 			}
 			// If we get here, then we matched part of the option, but it's not our option because
 			// we expected a value and no value was provided. We know this because we sort our
 			// matchable aliases by length such that the longest option will match first.
+			s.syntax.Add(&node{
+				Pos:    argPos,
+				Offset: charPos,
+			})
+			return nil
 		}
 		// Not Expecting value
 
@@ -197,8 +203,8 @@ func (s *scanner) scanOption(argPos, charPos int, allowCombinedFlags bool) error
 		// Are there more un matched characters?
 		if end != len(option) {
 			fmt.Println("more un-matched")
-			// and we can match combined flags?
-			if allowCombinedFlags {
+			// and we can match combined options?
+			if allowCombinedOptions {
 				// attempt to match the next option
 				return s.scanOption(argPos, end, true)
 			}
@@ -207,8 +213,8 @@ func (s *scanner) scanOption(argPos, charPos int, allowCombinedFlags bool) error
 			continue
 		}
 		return nil
-		// Are there more un matched characters and we can match combined flags?
-		/*if charPos+1 != len(option) && allowCombinedFlags {
+		// Are there more un matched characters and we can match combined option?
+		/*if charPos+1 != len(option) && allowCombinedOptions {
 			// attempt to match the next option
 			return s.scanOption(argPos, charPos+1, true)
 		}*/
@@ -216,6 +222,7 @@ func (s *scanner) scanOption(argPos, charPos int, allowCombinedFlags bool) error
 	return nil
 }
 
+// TODO: Move this method to the `Mode` object
 func (s *scanner) hasMode(mode Mode) bool {
 	return s.mode&mode != 0
 }
@@ -223,16 +230,15 @@ func (s *scanner) hasMode(mode Mode) bool {
 func (s *scanner) matchAliases(arg string) (*rule, int) {
 	fmt.Printf("looking for alias '%s'\n", arg)
 	for _, alias := range s.aliases {
-		i := strings.Index(arg, alias)
-		if i != -1 {
-			return s.rules.GetRuleByAlias(alias), i + len(arg)
+		if strings.HasPrefix(arg, alias) {
+			return s.rules.GetRuleByAlias(alias), len(alias)
 		}
 	}
 	return nil, 0
 }
 
 // Determine if the arg begins with an '-|--' prefix, if it does
-// it returns the index after the prefix where we should start evaluating the flags
+// it returns the index after the prefix where we should start evaluating the options
 func hasFlagPrefix(arg string) int {
 	switch len(arg) {
 	case 0, 1:

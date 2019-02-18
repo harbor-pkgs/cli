@@ -3,14 +3,13 @@ package cli_test
 import (
 	"errors"
 	"github.com/davecgh/go-spew/spew"
+	"github.com/harbor-pkgs/cli"
+	"github.com/stretchr/testify/assert"
+	"github.com/stretchr/testify/require"
 	"sort"
 	"strconv"
 	"strings"
 	"testing"
-
-	"github.com/harbor-pkgs/cli"
-	"github.com/stretchr/testify/assert"
-	"github.com/stretchr/testify/require"
 )
 
 func TestInvalidStoreType(t *testing.T) {
@@ -79,10 +78,6 @@ func TestMultpleOptionSameStore(t *testing.T) {
 	assert.Equal(t, 0, retCode)
 	assert.Equal(t, "foo", foo)
 }
-
-// TODO: Add argument cast tests to the `TestOption` tests and rename them `TestDefaultScalar()`, etc...
-// TODO: Add tests that cast values from a INIStore, This will exercise the 'string'
-// to 'type' path in `toXX` cast functions
 
 func TestOptionDefaultScalar(t *testing.T) {
 	var foo string
@@ -374,6 +369,52 @@ func TestSetValueInterface(t *testing.T) {
 		{x: 100, y: 5000},
 	}, cords.points)
 
+}
+
+// TODO: func TestMapKind(t *testing.T) {
+// TODO: func TestSliceKind(t *testing.T) {
+
+func TestScalarKind(t *testing.T) {
+	var stringOpt string
+	var intOpt int
+	//var int64Opt int64
+	//var uint64Opt uint64
+	//var uintOpt uint
+	//var float64Opt float64
+	var boolOpt bool
+	//var durationOpt time.Duration
+
+	p := cli.New(&cli.Config{
+		Mode: cli.IgnoreUnknownArgs,
+	})
+	p.Add(
+		&cli.Option{Name: "string", Store: &stringOpt},
+		&cli.Option{Name: "int", Store: &intOpt},
+		&cli.Option{Name: "bool", Store: &boolOpt},
+		/*&cli.Option{Name: "int64", Store: &int64Opt},
+		&cli.Option{Name: "uint", Store: &uintOpt},
+		&cli.Option{Name: "uint64", Store: &uint64Opt},
+		&cli.Option{Name: "float64", Store: &float64Opt},
+		&cli.Option{Name: "duration", Store: &durationOpt},*/
+	)
+
+	// Given no value
+	retCode, err := p.Parse(nil, []string{
+		"--bool", "yes",
+		"--int", "42",
+		"--int64", "500",
+		"--uint", "0xC0",
+		"--uint64", "0xC0FFE",
+		"--string", "foobar",
+		"--float64", "3.14",
+		"--duration", "2m",
+	})
+
+	require.Nil(t, err)
+	assert.Equal(t, 0, retCode)
+	assert.Equal(t, "foobar", stringOpt)
+	assert.Equal(t, 42, intOpt)
+	assert.Equal(t, true, boolOpt)
 }
 
 // TODO: Test all possible type conversions

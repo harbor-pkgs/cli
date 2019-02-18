@@ -321,6 +321,43 @@ func TestInvalidRuleNames(t *testing.T) {
 	assert.Equal(t, "'*bar' is an invalid name for option; prefixes on names are not allowed", err.Error())
 }
 
+func TestPartialMatchArgs(t *testing.T) {
+	var foo, fooBar, fooBang, bang string
+
+	p := cli.New(nil)
+	p.Add(
+		&cli.Option{Name: "foo", Store: &foo},
+		&cli.Option{Name: "foo-bang", Store: &fooBang},
+		&cli.Option{Name: "foobar", Store: &fooBar},
+		&cli.Option{Name: "bang", Store: &bang},
+	)
+
+	// Given no value
+	retCode, err := p.Parse(nil, []string{
+		"--foobar", "one",
+		"--foo-bang", "two",
+		"--foo", "three",
+		"--bang", "four",
+	})
+
+	assert.Nil(t, err)
+	assert.Equal(t, 0, retCode)
+	assert.Equal(t, "one", fooBar)
+	assert.Equal(t, "two", fooBang)
+	assert.Equal(t, "three", foo)
+	assert.Equal(t, "four", bang)
+
+	retCode, err = p.Parse(nil, []string{
+		"--foobar", "one",
+		"--foo-bang", "two",
+		"--foo", "three",
+		"--me", "five",
+		"--foo-me", "four",
+	})
+	assert.NotNil(t, err)
+	assert.Equal(t, "'--me' was provided but not defined", err.Error())
+}
+
 func TestInvalidAliases(t *testing.T) {
 	var foo, flag string
 	p := cli.New(nil)
@@ -336,6 +373,8 @@ func TestInvalidAliases(t *testing.T) {
 	assert.Equal(t, "'-b' is an invalid alias for option; prefixes on aliases are not allowed", err.Error())
 }
 
+// TODO: Errors should reference the actual option that caused the issue, not the rule definition name
+//  IE: (unexpected duplicate option 'foo' provided") should be (unexpected duplicate option '-f' provided")
 // TODO: Test interspersed arguments <arg0> <arg1> <cmd> <arg0>
 // TODO: Test CanRepeat arguments
 // TODO: Test CanRepeat post and prefix  cp <src> <src> <dst>

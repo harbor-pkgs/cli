@@ -29,7 +29,7 @@ type Mode int64
 
 const (
 	// TODO: Support combined option parsing (-s -o can be expressed as -so)
-	// Cannot be combined with 'AllowUnknownArgs'
+	// Cannot be combined with 'IgnoreUnknownArgs'
 	AllowCombinedOptions Mode = 1 << iota
 	// TODO: Support values that directly follow a option ( '-f value' can be expressed as '-fvalue' )
 	AllowCombinedValues
@@ -38,7 +38,7 @@ const (
 	AllowUnPrefixedOptions
 	// Arguments that don't match a option or argument defined by the parser do not result in an error
 	// Unknown args can be retrieved using Parser.UnProcessedArgs()
-	AllowUnknownArgs
+	IgnoreUnknownArgs
 	// Avoid adding a --help, -h option
 	NoHelp
 	// Don't display help message when ParseOrExit() encounters an error
@@ -84,8 +84,6 @@ type Parser struct {
 	// Each new argument is assigned a sequence depending on when they were added. This
 	// allows us to infer which position the argument should be expected when parsing the command line
 	seqCount int
-	// Represents the parsers mode which dictates how the parser reacts to input
-	mode Mode
 }
 
 func New(config *Config) *Parser {
@@ -119,16 +117,16 @@ func New(config *Config) *Parser {
 
 // Returns true if the mode or set of modes is selected
 func (p *Parser) HasMode(mode Mode) bool {
-	return p.mode&mode != 0
+	return p.cfg.Mode&mode != 0
 }
 
 // Set or clear a mode on the current parser
 func (p *Parser) SetMode(mode Mode, set bool) {
 	if set {
-		p.mode = p.mode | mode
+		p.cfg.Mode = p.cfg.Mode | mode
 	} else {
-		mask := p.mode ^ mode
-		p.mode &= mask
+		mask := p.cfg.Mode ^ mode
+		p.cfg.Mode &= mask
 	}
 }
 
@@ -249,9 +247,10 @@ func (p *Parser) validateAndStore(rs *resultStore) (int, error) {
 	// TODO: Support option dependency (option2 cannot be used unless option1 is also defined)
 
 	// If the user asked to error on unknown arguments
-	if !p.HasMode(AllowUnknownArgs) {
+	if !p.HasMode(IgnoreUnknownArgs) {
 		args := p.UnProcessedArgs()
 		if len(args) != 0 {
+			// TODO: Review if this is the correct wording for an unknown argument
 			return ErrorRetCode, fmt.Errorf("'%s' was provided but not defined", args[0])
 		}
 	}

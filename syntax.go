@@ -17,6 +17,11 @@ type node struct {
 	ValueFor   *node
 }
 
+// Returns true if this node associated with a rule
+func (n *node) HasRule() bool {
+	return n.Rule != nil || n.ValueFor != nil
+}
+
 type nodes []*node
 type linearSyntax struct {
 	nodes []*node
@@ -59,7 +64,7 @@ func (s *linearSyntax) Add(n *node) {
 func (s *linearSyntax) Contains(pos int) bool {
 	for _, node := range s.nodes {
 		if node.Pos == pos {
-			return true
+			return node.HasRule()
 		}
 	}
 	return false
@@ -68,7 +73,11 @@ func (s *linearSyntax) Contains(pos int) bool {
 func (s *linearSyntax) String() string {
 	var lines []string
 	for i := 0; i < len(s.nodes); i++ {
-		lines = append(lines, fmt.Sprintf("[%d] %+v", i, s.nodes[i]))
+		var name string
+		if s.nodes[i].Rule != nil {
+			name = s.nodes[i].Rule.Name
+		}
+		lines = append(lines, fmt.Sprintf("[%d] '%s' - %+v", i, name, s.nodes[i]))
 	}
 	return strings.Join(lines, "\n")
 }
