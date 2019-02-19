@@ -2,14 +2,17 @@ package cli_test
 
 import (
 	"errors"
+	"fmt"
 	"github.com/davecgh/go-spew/spew"
 	"github.com/harbor-pkgs/cli"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
+	"os"
 	"sort"
 	"strconv"
 	"strings"
 	"testing"
+	"time"
 )
 
 func TestInvalidStoreType(t *testing.T) {
@@ -374,29 +377,138 @@ func TestSetValueInterface(t *testing.T) {
 // TODO: func TestMapKind(t *testing.T) {
 // TODO: func TestSliceKind(t *testing.T) {
 
-func TestScalarKind(t *testing.T) {
-	var stringOpt string
-	var intOpt int
-	//var int64Opt int64
-	//var uint64Opt uint64
-	//var uintOpt uint
-	//var float64Opt float64
-	var boolOpt bool
-	//var durationOpt time.Duration
+type TestStruct struct {
+	StringOpt   string
+	IntOpt      int
+	Int64Opt    int64
+	Uint64Opt   uint64
+	UintOpt     uint
+	Float64Opt  float64
+	BoolOpt     bool
+	DurationOpt time.Duration
+}
 
-	p := cli.New(&cli.Config{
-		Mode: cli.IgnoreUnknownArgs,
-	})
-	p.Add(
-		&cli.Option{Name: "string", Store: &stringOpt},
-		&cli.Option{Name: "int", Store: &intOpt},
-		&cli.Option{Name: "bool", Store: &boolOpt},
-		/*&cli.Option{Name: "int64", Store: &int64Opt},
+func TestBoolConv(t *testing.T) {
+	var ts TestStruct
+
+	tests := []struct {
+		v   cli.Variant
+		exp bool
+		val string
+	}{
+		{v: &cli.Option{Name: "foo", Store: &ts.BoolOpt}, val: "true", exp: true},
+		{v: &cli.Option{Name: "foo", Store: &ts.BoolOpt}, val: "TRUE", exp: true},
+		{v: &cli.Option{Name: "foo", Store: &ts.BoolOpt}, val: "True", exp: true},
+		{v: &cli.Option{Name: "foo", Store: &ts.BoolOpt}, val: "false", exp: false},
+		{v: &cli.Option{Name: "foo", Store: &ts.BoolOpt}, val: "FALSE", exp: false},
+		{v: &cli.Option{Name: "foo", Store: &ts.BoolOpt}, val: "False", exp: false},
+		{v: &cli.Option{Name: "foo", Store: &ts.BoolOpt}, val: "yes", exp: true},
+		{v: &cli.Option{Name: "foo", Store: &ts.BoolOpt}, val: "YES", exp: true},
+		{v: &cli.Option{Name: "foo", Store: &ts.BoolOpt}, val: "Yes", exp: true},
+		{v: &cli.Option{Name: "foo", Store: &ts.BoolOpt}, val: "no", exp: false},
+		{v: &cli.Option{Name: "foo", Store: &ts.BoolOpt}, val: "NO", exp: false},
+		{v: &cli.Option{Name: "foo", Store: &ts.BoolOpt}, val: "No", exp: false},
+		{v: &cli.Option{Name: "foo", Store: &ts.BoolOpt}, val: "0", exp: false},
+		{v: &cli.Option{Name: "foo", Store: &ts.BoolOpt}, val: "1", exp: true},
+	}
+
+	for i, test := range tests {
+		ts = TestStruct{}
+		p := cli.New(nil)
+		p.Add(test.v)
+		retCode, err := p.Parse(nil, []string{"--foo", test.val})
+
+		// Then
+		assert.Nil(t, err)
+		assert.Equal(t, 0, retCode)
+		assert.Equal(t, ts.BoolOpt, test.exp, fmt.Sprintf("test case '%d'", i))
+	}
+}
+
+func TestScalarKind(t *testing.T) {
+	var ts TestStruct
+
+	tests := []struct {
+		v    cli.Variant
+		cmp  func(string)
+		args []string
+		env  string
+	}{
+
+		// String
+		{
+			cmp:  func(msg string) { assert.Equal(t, "foobar", ts.StringOpt, msg) },
+			v:    &cli.Option{Name: "foo", Store: &ts.StringOpt},
+			args: []string{"--foo", "foobar"},
+		},
+		{
+			cmp:  func(msg string) { assert.Equal(t, "default-foo", ts.StringOpt, msg) },
+			v:    &cli.Option{Name: "foo", Store: &ts.StringOpt, Default: "default-foo"},
+			args: []string{},
+		},
+		{
+			cmp:  func(msg string) { assert.Equal(t, "env-foo", ts.StringOpt, msg) },
+			v:    &cli.Option{Name: "foo", Store: &ts.StringOpt, Env: "FOO"},
+			args: []string{},
+			env:  "env-foo",
+		},
+
+		// Integer
+		{
+			cmp:  func(msg string) { assert.Equal(t, 42, ts.IntOpt, msg) },
+			v:    &cli.Option{Name: "foo", Store: &ts.IntOpt},
+			args: []string{"--foo", "42"},
+		},
+		{
+			cmp:  func(msg string) { assert.Equal(t, 255, ts.IntOpt, msg) },
+			v:    &cli.Option{Name: "foo", Store: &ts.IntOpt, Default: "255"},
+			args: []string{},
+		},
+		{
+			cmp:  func(msg string) { assert.Equal(t, 500, ts.IntOpt, msg) },
+			v:    &cli.Option{Name: "foo", Store: &ts.IntOpt, Env: "FOO"},
+			args: []string{},
+			env:  "500",
+		},
+
+		// Boolean
+		{
+			cmp:  func(msg string) { assert.Equal(t, true, ts.BoolOpt, msg) },
+			v:    &cli.Option{Name: "foo", Store: &ts.BoolOpt},
+			args: []string{"--foo", "true"},
+		},
+		{
+			cmp:  func(msg string) { assert.Equal(t, true, ts.BoolOpt, msg) },
+			v:    &cli.Option{Name: "foo", Store: &ts.BoolOpt, Default: "true"},
+			args: []string{},
+		},
+		{
+			cmp:  func(msg string) { assert.Equal(t, true, ts.BoolOpt, msg) },
+			v:    &cli.Option{Name: "foo", Store: &ts.BoolOpt, Env: "FOO"},
+			args: []string{},
+			env:  "true",
+		},
+	}
+
+	for i, test := range tests {
+		testCase := fmt.Sprintf("test case '%d'", i)
+		os.Setenv("FOO", test.env)
+		ts = TestStruct{}
+
+		p := cli.New(nil)
+		p.Add(test.v)
+		retCode, err := p.Parse(nil, test.args)
+
+		assert.Nil(t, err, testCase)
+		assert.Equal(t, 0, retCode, testCase)
+		test.cmp(testCase)
+	}
+
+	/* TODO &cli.Option{Name: "int64", Store: &int64Opt},
 		&cli.Option{Name: "uint", Store: &uintOpt},
 		&cli.Option{Name: "uint64", Store: &uint64Opt},
 		&cli.Option{Name: "float64", Store: &float64Opt},
-		&cli.Option{Name: "duration", Store: &durationOpt},*/
-	)
+		&cli.Option{Name: "duration", Store: &durationOpt},
 
 	// Given no value
 	retCode, err := p.Parse(nil, []string{
@@ -408,13 +520,7 @@ func TestScalarKind(t *testing.T) {
 		"--string", "foobar",
 		"--float64", "3.14",
 		"--duration", "2m",
-	})
-
-	require.Nil(t, err)
-	assert.Equal(t, 0, retCode)
-	assert.Equal(t, "foobar", stringOpt)
-	assert.Equal(t, 42, intOpt)
-	assert.Equal(t, true, boolOpt)
+	})*/
 }
 
 // TODO: Test all possible type conversions
