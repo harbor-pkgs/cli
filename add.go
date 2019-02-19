@@ -73,12 +73,9 @@ func (f *Option) toRule() (*rule, error) {
 
 	if f.Store != nil {
 		r.SetFlag(isExpectingValue, true)
-		fnc, option, err := newStoreFunc(f.Store)
-		if err != nil {
+		if err := newStoreFunc(r, f.Store); err != nil {
 			return nil, fmt.Errorf("invalid 'Store' while adding option '%s': %s", f.Name, err)
 		}
-		r.SetFlag(option, true)
-		r.StoreFuncs = append(r.StoreFuncs, fnc)
 	}
 
 	if f.Default != "" {
@@ -131,12 +128,9 @@ func (a *Argument) toRule() (*rule, error) {
 	}
 
 	if a.Store != nil {
-		fnc, option, err := newStoreFunc(a.Store)
-		if err != nil {
+		if err := newStoreFunc(r, a.Store); err != nil {
 			return nil, fmt.Errorf("invalid 'Store' while adding argument '%s': %s", a.Name, err)
 		}
-		r.SetFlag(option, true)
-		r.StoreFuncs = append(r.StoreFuncs, fnc)
 	}
 
 	if a.Default != "" {
@@ -192,12 +186,9 @@ func (e *EnvVar) toRule() (*rule, error) {
 	}
 
 	if e.Store != nil {
-		fnc, flags, err := newStoreFunc(e.Store)
-		if err != nil {
+		if err := newStoreFunc(r, e.Store); err != nil {
 			return nil, fmt.Errorf("invalid 'Store' while adding EnvVar '%s': %s", e.Name, err)
 		}
-		r.SetFlag(flags, true)
-		r.StoreFuncs = append(r.StoreFuncs, fnc)
 	}
 
 	if e.Default != "" {
@@ -217,10 +208,10 @@ func (e *EnvVar) toRule() (*rule, error) {
 	return r, nil
 }
 
-func newStoreFunc(dest interface{}) (StoreFunc, Flags, error) {
+func newStoreFunc(r *rule, dest interface{}) error {
 	// If the dest conforms to the SetValue interface
 	if sv, ok := dest.(SetValue); ok {
-		return func(value interface{}, count int) error {
+		fn := func(value interface{}, count int) error {
 			values := value.([]string)
 			for _, v := range values {
 				if err := sv.Set(v); err != nil {
@@ -228,12 +219,16 @@ func newStoreFunc(dest interface{}) (StoreFunc, Flags, error) {
 				}
 			}
 			return nil
-		}, ListKind | isString | CanRepeat, nil
+		}
+		r.SetFlag(ListKind, true)
+		r.StoreFuncs = append(r.StoreFuncs, fn)
+		r.Usage = "<string>"
+		return nil
 	}
 
 	d := reflect.ValueOf(dest)
 	if d.Kind() != reflect.Ptr {
-		return nil, ScalarKind, fmt.Errorf("cannot use non pointer type '%s'; must provide a pointer", d.Kind())
+		return fmt.Errorf("cannot use non pointer type '%s'; must provide a pointer", d.Kind())
 	}
 
 	// Dereference the pointer
@@ -243,60 +238,91 @@ func newStoreFunc(dest interface{}) (StoreFunc, Flags, error) {
 	switch d.Kind() {
 
 	case reflect.Array, reflect.Slice:
+		r.SetFlag(ListKind, true)
 		elem := reflect.TypeOf(dest).Elem().Elem()
 		switch elem.Kind() {
 		case reflect.Int:
 			ref, ok := dest.(*[]int)
 			if !ok {
-				return nil, ListKind, fmt.Errorf("cannot store array of type int; only slices supported")
+				// TODO: Fix this error message, and change the `case reflect.Array` to just Slice
+				return fmt.Errorf("cannot store array of type int; only slices supported")
 			}
-			return toIntSlice(ref), ListKind | isInt, nil
+			r.StoreFuncs = append(r.StoreFuncs, toIntSlice(ref))
+			// TODO: Check for NoSplit flag
+			r.Usage = "<int>,<int>"
+			return nil
 		case reflect.String:
 			ref, ok := dest.(*[]string)
 			if !ok {
-				return nil, ListKind, fmt.Errorf("cannot store array of type string; only slices supported")
+				return fmt.Errorf("cannot store array of type string; only slices supported")
 			}
-			return toStringSlice(ref), ListKind | isString, nil
+			r.StoreFuncs = append(r.StoreFuncs, toStringSlice(ref))
+			r.Usage = "<str>,<str>"
+			return nil
 		case reflect.Bool:
 			ref, ok := dest.(*[]bool)
 			if !ok {
-				return nil, ListKind, fmt.Errorf("cannot store array of type bool; only slices supported")
+				return fmt.Errorf("cannot store array of type bool; only slices supported")
 			}
-			return toBoolSlice(ref), ListKind | isBool, nil
+			r.StoreFuncs = append(r.StoreFuncs, toBoolSlice(ref))
+			r.Usage = "<bool>,<bool>"
+			return nil
 		default:
-			return nil, ListKind, fmt.Errorf("slice of type '%s' is not supported", elem.Kind())
+			return fmt.Errorf("slice of type '%s' is not supported", elem.Kind())
 		}
 
 	case reflect.Map:
+		r.SetFlag(MapKind, true)
 		key := d.Type().Key()
 		elem := d.Type().Elem()
 		if key.Kind() == reflect.String && elem.Kind() == reflect.String {
-			return toStringMap(dest.(*map[string]string)), MapKind | isString, nil
+			r.StoreFuncs = append(r.StoreFuncs, toStringMap(dest.(*map[string]string)))
+			r.Usage = "<key>=<string>"
+			return nil
 		}
 		if key.Kind() == reflect.String && elem.Kind() == reflect.Int {
-			return toIntMap(dest.(*map[string]int)), MapKind | isInt, nil
+			r.StoreFuncs = append(r.StoreFuncs, toIntMap(dest.(*map[string]int)))
+			r.Usage = "<key>=<int>"
+			return nil
 		}
 		if key.Kind() == reflect.String && elem.Kind() == reflect.Bool {
-			return toBoolMap(dest.(*map[string]bool)), MapKind | isBool, nil
+			r.StoreFuncs = append(r.StoreFuncs, toBoolMap(dest.(*map[string]bool)))
+			r.Usage = "<key>=<bool>"
+			return nil
 		}
-		return nil, MapKind, fmt.Errorf("cannot use 'map[%s]%s'; only "+
+		return fmt.Errorf("cannot use 'map[%s]%s'; only "+
 			"'map[string]string, map[string]int, map[string]bool' currently supported", key.Kind(), elem.Kind())
 
 	case reflect.String:
-		return toString(dest.(*string)), ScalarKind | isString, nil
+		r.SetFlag(ScalarKind, true)
+		r.StoreFuncs = append(r.StoreFuncs, toString(dest.(*string)))
+		r.Usage = "<string>"
+		return nil
 
 	case reflect.Bool:
-		return toBool(dest.(*bool)), ScalarKind | isBool, nil
+		r.SetFlag(ScalarKind, true)
+		r.StoreFuncs = append(r.StoreFuncs, toBool(dest.(*bool)))
+		r.Usage = "<bool>"
+		return nil
 
 	case reflect.Int:
-		return toInt(dest.(*int)), ScalarKind | isInt, nil
+		r.SetFlag(ScalarKind, true)
+		r.StoreFuncs = append(r.StoreFuncs, toInt(dest.(*int)))
+		r.Usage = "<int>"
+		return nil
+
+	/*case reflect.Float64:
+	r.SetFlag(ScalarKind, true)
+	r.StoreFuncs = append(r.StoreFuncs, toFloat64(dest.(*float64)))
+	r.Usage = "<float>"
+	return nil*/
 
 	// Unhandled types
 	case reflect.Uint, reflect.Uint8, reflect.Uint16, reflect.Uint32, reflect.Uint64, reflect.Uintptr, reflect.Float32,
 		reflect.Float64, reflect.Interface, reflect.Ptr, reflect.Int8, reflect.Int16, reflect.Int32, reflect.Int64:
-		return nil, ScalarKind, fmt.Errorf("cannot store '%s'; type not supported", d.Kind())
+		return fmt.Errorf("cannot store '%s'; type not supported", d.Kind())
 	}
-	return nil, ScalarKind, fmt.Errorf("unhandled type '%s'", d.Kind())
+	return fmt.Errorf("unhandled type '%s'", d.Kind())
 }
 
 type Command struct {

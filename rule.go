@@ -49,11 +49,6 @@ const (
 	ScalarKind
 	ListKind
 	MapKind
-
-	// Type flags
-	isString
-	isInt
-	isBool
 )
 
 type rule struct {
@@ -67,6 +62,7 @@ type rule struct {
 	Choices     []string
 	StoreFuncs  []StoreFunc
 	CommandFunc CommandFunc
+	Usage       string
 	flags       Flags
 }
 
@@ -149,38 +145,7 @@ func (r *rule) generateConfigHelp(wordWrap int) bytes.Buffer {
 }
 
 func (r *rule) TypeUsage() string {
-	switch {
-	case r.HasFlag(ScalarKind):
-		switch {
-		case r.HasFlag(isString):
-			return "<string>"
-		case r.HasFlag(isBool):
-			return "<bool>"
-		case r.HasFlag(isInt):
-			return "<int>"
-		default:
-			return "<unknown>"
-		}
-	case r.HasFlag(ListKind):
-		switch {
-		case r.HasFlag(isString):
-			return "<str>,<str>"
-		case r.HasFlag(isBool):
-			return "<bool>,<bool>"
-		case r.HasFlag(isInt):
-			return "<int>,<int>"
-		default:
-			return "<unknown>,<unknown>"
-		}
-	case r.HasFlag(MapKind):
-		switch {
-		case r.HasFlag(isString):
-			return "<key>=<string>"
-		default:
-			return "<key>=<unknown>"
-		}
-	}
-	return "<unknown>"
+	return r.Usage
 }
 
 func (r *rule) GenerateHelp() (string, string) {
