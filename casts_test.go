@@ -3,57 +3,48 @@ package cli_test
 import (
 	"errors"
 	"fmt"
-	"github.com/davecgh/go-spew/spew"
-	"github.com/harbor-pkgs/cli"
-	"github.com/stretchr/testify/assert"
-	"github.com/stretchr/testify/require"
 	"os"
 	"sort"
 	"strconv"
 	"strings"
 	"testing"
 	"time"
+
+	"github.com/davecgh/go-spew/spew"
+	"github.com/harbor-pkgs/cli"
+	"github.com/stretchr/testify/assert"
+	"github.com/stretchr/testify/require"
 )
 
 func TestInvalidStoreType(t *testing.T) {
-	var integer64 int64
+	var integer32 uint32
 	var integer int
 	var aInt [2]int
-	var aStr [2]string
-	var aBool [2]bool
 
 	tests := []struct {
-		option *cli.Option
-		err    string
+		opt *cli.Option
+		err string
 	}{
 		{
-			option: &cli.Option{Name: "foo", Store: &integer64},
-			err:    "invalid 'Store' while adding option 'foo': cannot store 'int64'; type not supported",
+			opt: &cli.Option{Name: "foo", Store: &integer32},
+			err: "invalid 'Store' while adding option 'foo': cannot store 'uint32'; type not supported",
 		},
 		{
-			option: &cli.Option{Name: "foo", Store: integer},
-			err:    "invalid 'Store' while adding option 'foo': cannot use non pointer type 'int'; must provide a pointer",
+			opt: &cli.Option{Name: "foo", Store: integer},
+			err: "invalid 'Store' while adding option 'foo': cannot use non pointer type 'int'; must provide a pointer",
 		},
 		{
-			option: &cli.Option{Name: "foo", Store: &aInt},
-			err:    "invalid 'Store' while adding option 'foo': cannot store array of type int; only slices supported",
-		},
-		{
-			option: &cli.Option{Name: "foo", Store: &aStr},
-			err:    "invalid 'Store' while adding option 'foo': cannot store array of type string; only slices supported",
-		},
-		{
-			option: &cli.Option{Name: "foo", Store: &aBool},
-			err:    "invalid 'Store' while adding option 'foo': cannot store array of type bool; only slices supported",
+			opt: &cli.Option{Name: "foo", Store: &aInt},
+			err: "invalid 'Store' while adding option 'foo': cannot store '[2]int'; only slices supported",
 		},
 	}
 
 	for _, test := range tests {
 		p := cli.New(nil)
-		p.Add(test.option)
+		p.Add(test.opt)
 
 		retCode, err := p.Parse(nil, []string{})
-		assert.NotNil(t, err)
+		require.NotNil(t, err)
 		assert.Equal(t, cli.ErrorRetCode, retCode)
 		assert.Contains(t, err.Error(), test.err)
 	}
@@ -263,7 +254,7 @@ func TestOptionBoolMap(t *testing.T) {
 }
 
 func TestInvalidMapType(t *testing.T) {
-	var foo map[string]int64
+	var foo map[string]uint32
 	var count int
 
 	p := cli.New(nil)
@@ -276,7 +267,7 @@ func TestInvalidMapType(t *testing.T) {
 	// Then
 	require.NotNil(t, err)
 	assert.Equal(t, cli.ErrorRetCode, retCode)
-	assert.Contains(t, err.Error(), "invalid 'Store' while adding option 'foo': cannot use 'map[string]int64';")
+	assert.Contains(t, err.Error(), "invalid 'Store' while adding option 'foo': cannot use 'map[string]uint32';")
 }
 
 func TestOptionWithMapAndJSON(t *testing.T) {
@@ -374,9 +365,6 @@ func TestSetValueInterface(t *testing.T) {
 
 }
 
-// TODO: func TestMapKind(t *testing.T) {
-// TODO: func TestSliceKind(t *testing.T) {
-
 type TestStruct struct {
 	StringOpt   string
 	IntOpt      int
@@ -453,7 +441,7 @@ func TestScalarKind(t *testing.T) {
 			env:  "env-foo",
 		},
 
-		// Integer
+		// Int
 		{
 			cmp:  func(msg string) { assert.Equal(t, 42, ts.IntOpt, msg) },
 			v:    &cli.Option{Name: "foo", Store: &ts.IntOpt},
@@ -488,6 +476,96 @@ func TestScalarKind(t *testing.T) {
 			args: []string{},
 			env:  "true",
 		},
+
+		// Uint
+		{
+			cmp:  func(msg string) { assert.Equal(t, uint(0xFFFFFFFF), ts.UintOpt, msg) },
+			v:    &cli.Option{Name: "foo", Store: &ts.UintOpt},
+			args: []string{"--foo", "0xFFFFFFFF"},
+		},
+		{
+			cmp:  func(msg string) { assert.Equal(t, uint(0xC0FFEE), ts.UintOpt, msg) },
+			v:    &cli.Option{Name: "foo", Store: &ts.UintOpt, Default: "0xC0FFEE"},
+			args: []string{},
+		},
+		{
+			cmp:  func(msg string) { assert.Equal(t, uint(0xBAADF00D), ts.UintOpt, msg) },
+			v:    &cli.Option{Name: "foo", Store: &ts.UintOpt, Env: "FOO"},
+			args: []string{},
+			env:  "0xBAADF00D",
+		},
+
+		// Int64
+		{
+			cmp:  func(msg string) { assert.Equal(t, int64(9223372036854775807), ts.Int64Opt, msg) },
+			v:    &cli.Option{Name: "foo", Store: &ts.Int64Opt},
+			args: []string{"--foo", "9223372036854775807"},
+		},
+		{
+			cmp:  func(msg string) { assert.Equal(t, int64(9223372036854775800), ts.Int64Opt, msg) },
+			v:    &cli.Option{Name: "foo", Store: &ts.Int64Opt, Default: "9223372036854775800"},
+			args: []string{},
+		},
+		{
+			cmp:  func(msg string) { assert.Equal(t, int64(9223372036854775801), ts.Int64Opt, msg) },
+			v:    &cli.Option{Name: "foo", Store: &ts.Int64Opt, Env: "FOO"},
+			args: []string{},
+			env:  "9223372036854775801",
+		},
+
+		// Uint64
+		{
+			cmp:  func(msg string) { assert.Equal(t, uint64(0xFEEDFACECAFE), ts.Uint64Opt, msg) },
+			v:    &cli.Option{Name: "foo", Store: &ts.Uint64Opt},
+			args: []string{"--foo", "0xFEEDFACECAFE"},
+		},
+		{
+			cmp:  func(msg string) { assert.Equal(t, uint64(0xFEEDCAFEC0FFE), ts.Uint64Opt, msg) },
+			v:    &cli.Option{Name: "foo", Store: &ts.Uint64Opt, Default: "0xFEEDCAFEC0FFE"},
+			args: []string{},
+		},
+		{
+			cmp:  func(msg string) { assert.Equal(t, uint64(0xF00DCAFEBEEF), ts.Uint64Opt, msg) },
+			v:    &cli.Option{Name: "foo", Store: &ts.Uint64Opt, Env: "FOO"},
+			args: []string{},
+			env:  "0xF00DCAFEBEEF",
+		},
+
+		// Float64
+		{
+			cmp:  func(msg string) { assert.Equal(t, float64(3.14), ts.Float64Opt, msg) },
+			v:    &cli.Option{Name: "foo", Store: &ts.Float64Opt},
+			args: []string{"--foo", "3.14"},
+		},
+		{
+			cmp:  func(msg string) { assert.Equal(t, float64(3.141), ts.Float64Opt, msg) },
+			v:    &cli.Option{Name: "foo", Store: &ts.Float64Opt, Default: "3.141"},
+			args: []string{},
+		},
+		{
+			cmp:  func(msg string) { assert.Equal(t, float64(3.1415), ts.Float64Opt, msg) },
+			v:    &cli.Option{Name: "foo", Store: &ts.Float64Opt, Env: "FOO"},
+			args: []string{},
+			env:  "3.1415",
+		},
+
+		// Duration
+		{
+			cmp:  func(msg string) { assert.Equal(t, time.Second, ts.DurationOpt, msg) },
+			v:    &cli.Option{Name: "foo", Store: &ts.DurationOpt},
+			args: []string{"--foo", "1s"},
+		},
+		{
+			cmp:  func(msg string) { assert.Equal(t, time.Nanosecond, ts.DurationOpt, msg) },
+			v:    &cli.Option{Name: "foo", Store: &ts.DurationOpt, Default: "1ns"},
+			args: []string{},
+		},
+		{
+			cmp:  func(msg string) { assert.Equal(t, time.Minute, ts.DurationOpt, msg) },
+			v:    &cli.Option{Name: "foo", Store: &ts.DurationOpt, Env: "FOO"},
+			args: []string{},
+			env:  "1m",
+		},
 	}
 
 	for i, test := range tests {
@@ -503,25 +581,7 @@ func TestScalarKind(t *testing.T) {
 		assert.Equal(t, 0, retCode, testCase)
 		test.cmp(testCase)
 	}
-
-	/* TODO &cli.Option{Name: "int64", Store: &int64Opt},
-		&cli.Option{Name: "uint", Store: &uintOpt},
-		&cli.Option{Name: "uint64", Store: &uint64Opt},
-		&cli.Option{Name: "float64", Store: &float64Opt},
-		&cli.Option{Name: "duration", Store: &durationOpt},
-
-	// Given no value
-	retCode, err := p.Parse(nil, []string{
-		"--bool", "yes",
-		"--int", "42",
-		"--int64", "500",
-		"--uint", "0xC0",
-		"--uint64", "0xC0FFE",
-		"--string", "foobar",
-		"--float64", "3.14",
-		"--duration", "2m",
-	})*/
 }
 
-// TODO: Test all possible type conversions
-// TODO: Add all the types that std 'flag' package supports
+// TODO: func TestMapKind(t *testing.T) {
+// TODO: func TestSliceKind(t *testing.T) {

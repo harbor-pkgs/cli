@@ -31,21 +31,51 @@ func newResultStore(rules ruleList) *resultStore {
 }
 
 func (rs *resultStore) From(ctx context.Context, from FromStore) error {
-	for _, rule := range rs.rules {
-		value, count, err := from.Get(ctx, rule.Name, rule.Flags())
-		fmt.Printf("[%s] Get(%s, %s) - '%v' '%d'\n", from.Source(), rule.Name, rule.Kind(), value, count)
+	for _, r := range rs.rules {
+		value, count, err := from.Get(ctx, r.Name, r.Flags)
 		if err != nil {
 			return err
 		}
-		if count != 0 {
-			rs.values[rule.Name] = valueSrc{
-				source: from.Source(),
-				count:  count,
-				value:  value,
-			}
+
+		fmt.Printf("[%s] Get(%s, %s) - '%v' '%d'\n", from.Source(), r.Name, r.Kind(), value, count)
+
+		// If store did not provide a value for this rule
+		if count == 0 {
+			continue
+		}
+
+		// Validate the 'value' is of the correct kind, This protects
+		// `StoreFunc` from receiving the incorrect kind.
+		if notValidKind(r, value) {
+			return fmt.Errorf("value for '%s' from '%s'; expected 'string' type but got '%T'",
+				r.Name, from.Source(), value)
+		}
+
+		rs.values[r.Name] = valueSrc{
+			source: from.Source(),
+			count:  count,
+			value:  value,
 		}
 	}
 	return nil
+}
+
+func notValidKind(r *rule, value interface{}) bool {
+	switch {
+	case r.HasFlag(ScalarKind):
+		if _, ok := value.(string); !ok {
+			return true
+		}
+	case r.HasFlag(SliceKind):
+		if _, ok := value.([]string); !ok {
+			return true
+		}
+	case r.HasFlag(MapKind):
+		if _, ok := value.(map[string]string); !ok {
+			return true
+		}
+	}
+	return false
 }
 
 func (rs *resultStore) Get(ctx context.Context, name string, flags Flags) (interface{}, int, error) {

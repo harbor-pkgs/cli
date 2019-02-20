@@ -39,7 +39,7 @@ func TestReadListValues(t *testing.T) {
 	kv, err := cli.NewIniStore(bytes.NewReader([]byte(scalarFile)))
 	require.Nil(t, err)
 
-	value, count, err := kv.Get(context.TODO(), "foo", cli.ListKind)
+	value, count, err := kv.Get(context.TODO(), "foo", cli.SliceKind)
 	require.Nil(t, err)
 	assert.Equal(t, 4, count)
 

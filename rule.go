@@ -47,7 +47,7 @@ const (
 
 	// Kind flags
 	ScalarKind
-	ListKind
+	SliceKind
 	MapKind
 )
 
@@ -63,19 +63,19 @@ type rule struct {
 	StoreFuncs  []StoreFunc
 	CommandFunc CommandFunc
 	Usage       string
-	flags       Flags
+	Flags       Flags
 }
 
 func (r *rule) HasFlag(flag Flags) bool {
-	return r.flags&flag != 0
+	return r.Flags&flag != 0
 }
 
 func (r *rule) SetFlag(flag Flags, set bool) {
 	if set {
-		r.flags = r.flags | flag
+		r.Flags = r.Flags | flag
 	} else {
-		mask := r.flags ^ flag
-		r.flags &= mask
+		mask := r.Flags ^ flag
+		r.Flags &= mask
 	}
 }
 
@@ -199,4 +199,28 @@ func (r *rule) IsRequiredMessage() string {
 		return fmt.Sprintf("option '--%s' is required", r.Name)
 	}
 	return fmt.Sprintf("'%s' is required", r.Name)
+}
+
+func (r rule) Type() string {
+	switch {
+	case r.HasFlag(isOption):
+		return "option"
+	case r.HasFlag(isArgument):
+		return "argument"
+	case r.HasFlag(isCommand):
+		return "command"
+	}
+	return "unknown"
+}
+
+func (r rule) Kind() string {
+	switch {
+	case r.HasFlag(ScalarKind):
+		return "ScalarKind"
+	case r.HasFlag(SliceKind):
+		return "SliceKind"
+	case r.HasFlag(MapKind):
+		return "MapKind"
+	}
+	return "unknown"
 }

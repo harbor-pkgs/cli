@@ -39,8 +39,8 @@ func ContainsString(s string, slice []string, modifier func(s string) string) bo
 
 // Given a comma separated string, return a slice of string items.
 // Return the entire string as the first item if no comma is found.
+// Ignores commas inside a quote `"1,234", "20,2020", "1,1"`
 func ToSlice(value string, modifiers ...func(s string) string) []string {
-	// TODO: Ignore commas inside a quote `"1,234", "20,2020", "1,1"`
 	lastQuote := rune(0)
 	result := strings.FieldsFunc(value, func(c rune) bool {
 		switch {
@@ -90,7 +90,7 @@ func ToIntMap(value string) (map[string]int, error) {
 	return result, nil
 }
 
-// Given a comma separated string of key values in the form `key=value`.
+// Given a comma separated string of key values in the form `key=bool`.
 // Return a map[string]bool for each key/value parsed
 func ToBoolMap(value string) (map[string]bool, error) {
 	strMap, err := ToStringMap(value)

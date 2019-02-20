@@ -373,10 +373,13 @@ func TestInvalidAliases(t *testing.T) {
 	assert.Equal(t, "'-b' is an invalid alias for option; prefixes on aliases are not allowed", err.Error())
 }
 
+func TestCanRepeat(t *testing.T) {
+	// TODO: Test CanRepeat arguments
+	// TODO: Test CanRepeat post and prefix  cp <src> <src> <dst>
+}
+
 // TODO: Errors should reference the actual option that caused the issue, not the rule definition name
 //  IE: (unexpected duplicate option 'foo' provided") should be (unexpected duplicate option '-f' provided")
 // TODO: Test interspersed arguments <arg0> <arg1> <cmd> <arg0>
-// TODO: Test CanRepeat arguments
-// TODO: Test CanRepeat post and prefix  cp <src> <src> <dst>
 // TODO: sub command usage should include <command> in usage line
 // TODO: Test for flags that start with or contain a number -v3  -2Knds

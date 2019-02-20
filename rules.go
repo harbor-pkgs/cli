@@ -185,31 +185,3 @@ func (r ruleList) GetRuleByFlag(flag Flags) *rule {
 	}
 	return nil
 }
-
-func (r rule) Flags() Flags {
-	return r.flags
-}
-
-func (r rule) Type() string {
-	switch {
-	case r.HasFlag(isOption):
-		return "option"
-	case r.HasFlag(isArgument):
-		return "argument"
-	case r.HasFlag(isCommand):
-		return "command"
-	}
-	return "unknown"
-}
-
-func (r rule) Kind() string {
-	switch {
-	case r.HasFlag(ScalarKind):
-		return "ScalarKind"
-	case r.HasFlag(ListKind):
-		return "ListKind"
-	case r.HasFlag(MapKind):
-		return "MapKind"
-	}
-	return "unknown"
-}

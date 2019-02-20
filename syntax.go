@@ -115,13 +115,12 @@ func convToKind(values []string, flags Flags, count int) (interface{}, int, erro
 	case flags.Has(ScalarKind):
 		//fmt.Printf("Get Ret: %s, %d\n", values[0], count)
 		return values[0], count, nil
-	case flags.Has(ListKind):
+	case flags.Has(SliceKind):
 		fmt.Printf("flag: %t\n", flags.Has(NoSplit))
 		// If only one item is provided, it must be a comma separated list
 		if count == 1 && !flags.Has(NoSplit) {
 			return ToSlice(values[0]), count, nil
 		}
-
 		return values, count, nil
 	case flags.Has(MapKind):
 		// each string in the list should be a key value pair
@@ -140,7 +139,7 @@ func convToKind(values []string, flags Flags, count int) (interface{}, int, erro
 		//fmt.Printf("Get Ret: %s, %d\n", r, count)
 		return r, count, nil
 	}
-	return nil, 0, errors.New("missing (ScalarKind|ListKind|MapKind) in flags")
+	return nil, 0, errors.New("invalid rule; missing (ScalarKind|SliceKind|MapKind) in flags")
 }
 
 func (p *linearSyntax) Source() string {

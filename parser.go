@@ -227,17 +227,26 @@ func (p *Parser) Parse(ctx context.Context, argv []string) (int, error) {
 	// If we get here, we are at the top of the parent tree and are ready to store values
 	results := newResultStore(p.rules)
 
+	// TODO: Put all the stores in `p.stores` and process them in this for loop.
+	//  This might provide future features like, having a user store take precedence over
+	//  an Env store.
+
 	// Retrieve values from any stores provided by the user first
 	for _, store := range p.stores {
 		if err := results.From(ctx, store); err != nil {
 			return ErrorRetCode, fmt.Errorf("while reading from store '%s': %s", store.Source(), err)
 		}
 	}
-	fmt.Printf("1 results: %+v\n", results.values)
-	results.From(ctx, newEnvStore(p.rules))
-	fmt.Printf("2 results: %+v\n", results.values)
-	results.From(ctx, p.syntax)
-	fmt.Printf("3 results: %+v\n", results.values)
+	fmt.Printf("User store: %+v\n", results.values)
+	if err := results.From(ctx, newEnvStore(p.rules)); err != nil {
+		return ErrorRetCode, err
+	}
+	fmt.Printf("Env store: %+v\n", results.values)
+	if err := results.From(ctx, p.syntax); err != nil {
+		return ErrorRetCode, err
+	}
+	fmt.Printf("Syntax store: %+v\n", results.values)
+
 	// Apply defaults and validate required values are provided then store values
 	return p.validateAndStore(results)
 }
@@ -258,7 +267,7 @@ func (p *Parser) validateAndStore(rs *resultStore) (int, error) {
 	fmt.Printf("4 results: %+v\n", rs.values)
 	for _, rule := range p.rules {
 		// get the value and how many instances of it where provided via the command line
-		value, count, err := rs.Get(context.Background(), rule.Name, rule.Flags())
+		value, count, err := rs.Get(context.Background(), rule.Name, rule.Flags)
 		if err != nil {
 			return ErrorRetCode, err
 		}
@@ -268,7 +277,9 @@ func (p *Parser) validateAndStore(rs *resultStore) (int, error) {
 		if count == 0 {
 			// Set the default value if provided
 			if rule.Default != nil {
-				value = *rule.Default
+				if value, count, err = convToKind([]string{*rule.Default}, rule.Flags, 1); err != nil {
+					return ErrorRetCode, err
+				}
 				fmt.Printf("default: %+v\n", value)
 			} else {
 				// and is required
