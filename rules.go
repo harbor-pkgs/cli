@@ -56,7 +56,6 @@ func (r *ruleList) SortRulesWithFlag(flag Flags) ruleList {
 func (r ruleList) ValidateRules() (ruleList, error) {
 	// TODO: Warn if EnvVar is used by more than one rule
 
-	var greedyRule *rule
 	for idx, rule := range r {
 		// Duplicate rule check
 		next := idx + 1
@@ -113,19 +112,6 @@ func (r ruleList) ValidateRules() (ruleList, error) {
 
 		if !rule.HasFlag(isArgument) {
 			continue
-		}
-
-		// If we already found a greedy rule, no other argument should follow
-		if greedyRule != nil {
-			return nil, fmt.Errorf("'%s' is ambiguous when following greedy argument '%s'",
-				rule.Name, greedyRule.Name)
-		}
-
-		// Check for ambiguous greedy arguments
-		if rule.HasFlag(CanRepeat) {
-			if greedyRule == nil {
-				greedyRule = rule
-			}
 		}
 	}
 	return r, nil

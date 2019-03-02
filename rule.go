@@ -38,6 +38,7 @@ const (
 	isEnvVar
 	isExpectingValue
 	isHelpRule // TODO: This should be a generic special case flag
+	cmdHandled
 
 	// Public flags
 	Required

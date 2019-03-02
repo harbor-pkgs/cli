@@ -48,8 +48,12 @@ func scanArgv(p *Parser) (*linearSyntax, error) {
 		return nil, err
 	}
 
-	// Scan for non-option arguments and sub commands
-	s.scanArgs()
+	// Argument parsing is not allowed if un-prefixed options is set
+	// TODO: This should be checked in the preflight validation and not here
+	if !s.hasMode(AllowUnPrefixedOptions) {
+		// Scan for non-option arguments and sub commands
+		s.scanArgs()
+	}
 
 	return s.syntax, nil
 }
@@ -81,22 +85,28 @@ func (s *scanner) scanOptions(argPos int) error {
 }
 
 func (s *scanner) scanArgs() {
-	for _, rule := range s.rules {
-		// TODO: Look for commands before assigning arguments
-		/*if rule.HasFlag(isCommand) {
 
-		}*/
+	// TODO: Look for commands before assigning arguments
+	/*if rule.HasFlag(isCommand) {
+
+	}*/
+	for _, rule := range s.rules {
 		if rule.HasFlag(isArgument) {
 			// Find an argument that is not already matched with a rule
 			for i, arg := range s.argv {
-				if !s.syntax.Contains(i) {
-					s.syntax.Add(&node{
-						Pos:   i,
-						Value: &arg,
-						Rule:  rule,
-					})
-					break
+				pos := s.syntax.AtPos(i)
+				if pos != nil {
+					// If the argv position is an option or already has a rule assigned
+					if pos.Flags.Has(isOption) || pos.Rule != nil {
+						continue
+					}
 				}
+				s.syntax.Add(&node{
+					Pos:   i,
+					Value: &arg,
+					Rule:  rule,
+				})
+				break
 			}
 		}
 	}
@@ -128,6 +138,7 @@ func (s *scanner) scanOption(argPos, charPos int, allowCombinedOptions bool) err
 		// The option did not match any aliases
 		if rule == nil {
 			s.syntax.Add(&node{
+				Flags:  isOption,
 				Pos:    argPos,
 				Offset: charPos,
 			})
@@ -146,12 +157,14 @@ func (s *scanner) scanOption(argPos, charPos int, allowCombinedOptions bool) err
 					return fmt.Errorf("expected option '%s' to have a value", s.argv[argPos])
 				}
 				optionNode := &node{
+					Flags: isOption,
 					Pos:   argPos,
 					Value: &s.argv[argPos+1],
 					Rule:  rule,
 				}
 				s.syntax.Add(optionNode)
 				s.syntax.Add(&node{
+					Flags:    isOption,
 					Pos:      argPos + 1,
 					ValueFor: optionNode,
 				})
@@ -165,6 +178,7 @@ func (s *scanner) scanOption(argPos, charPos int, allowCombinedOptions bool) err
 				// the remainder of the option is the value
 				value := option[end+2:]
 				s.syntax.Add(&node{
+					Flags: isOption,
 					Pos:   argPos,
 					Value: &value,
 					Rule:  rule,
@@ -176,6 +190,7 @@ func (s *scanner) scanOption(argPos, charPos int, allowCombinedOptions bool) err
 				// the remainder of the option is the value
 				value := option[end:]
 				s.syntax.Add(&node{
+					Flags: isOption,
 					Pos:   argPos,
 					Value: &value,
 					Rule:  rule,
@@ -186,6 +201,7 @@ func (s *scanner) scanOption(argPos, charPos int, allowCombinedOptions bool) err
 			// we expected a value and no value was provided. We know this because we sort our
 			// matchable aliases by length such that the longest option will match first.
 			s.syntax.Add(&node{
+				Flags:  isOption,
 				Pos:    argPos,
 				Offset: charPos,
 			})
@@ -196,8 +212,9 @@ func (s *scanner) scanOption(argPos, charPos int, allowCombinedOptions bool) err
 		fmt.Printf("added rule '%s' at pos '%d'\n", rule.Name, argPos)
 		// Add the rule and position to our syntax
 		s.syntax.Add(&node{
-			Pos:  argPos,
-			Rule: rule,
+			Flags: isOption,
+			Pos:   argPos,
+			Rule:  rule,
 		})
 
 		// Are there more un matched characters?

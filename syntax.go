@@ -8,13 +8,14 @@ import (
 )
 
 type node struct {
-	Pos        int
-	Offset     int
-	Value      *string
-	Rule       *rule
-	IsCmd      bool
-	CmdHandled bool
-	ValueFor   *node
+	Pos    int
+	Offset int
+	Value  *string
+	Rule   *rule
+	Flags  Flags
+	/*IsCmd      bool
+	CmdHandled bool*/
+	ValueFor *node
 }
 
 // Returns true if this node associated with a rule
@@ -58,6 +59,16 @@ func (s *linearSyntax) FindWithFlag(flag Flags) nodes {
 func (s *linearSyntax) Add(n *node) {
 	fmt.Printf("Add %+v\n", n)
 	s.nodes = append(s.nodes, n)
+}
+
+// Returns true if the argument at the specified position is an option
+func (s *linearSyntax) AtPos(pos int) *node {
+	for _, node := range s.nodes {
+		if node.Pos == pos {
+			return node
+		}
+	}
+	return nil
 }
 
 // Returns true if at least one rule matched the given argument position

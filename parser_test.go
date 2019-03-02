@@ -373,7 +373,38 @@ func TestInvalidAliases(t *testing.T) {
 	assert.Equal(t, "'-b' is an invalid alias for option; prefixes on aliases are not allowed", err.Error())
 }
 
+func TestUnknownArgs(t *testing.T) {
+	var foo string
+	var flag bool
+	p := cli.New(nil)
+
+	// Given
+	p.Add(&cli.Option{Name: "bar", Aliases: []string{"b"}, IsSet: &flag})
+	p.Add(&cli.Argument{Name: "foo", Store: &foo})
+	retCode, err := p.Parse(nil, []string{"-b", "-g", "bar"})
+
+	// Then '-g' should not be mistaken for argument 'foo'
+	require.NotNil(t, err)
+	assert.Equal(t, cli.ErrorRetCode, retCode)
+	assert.Equal(t, "'-g' was provided but not defined", err.Error())
+}
+
 func TestCanRepeat(t *testing.T) {
+	var src []string
+	var dst string
+
+	p := cli.New(nil)
+
+	// Given
+	p.Add(&cli.Argument{Name: "src", Store: &src, Flags: cli.CanRepeat})
+	p.Add(&cli.Argument{Name: "dst", Store: &dst})
+	retCode, err := p.Parse(nil, []string{"file1", "file2", "file3", "/folder"})
+
+	require.Nil(t, err)
+	assert.Equal(t, 0, retCode)
+	assert.Equal(t, []string{"file1", "file2", "file3"}, src)
+	assert.Equal(t, "/folder", dst)
+
 	// TODO: Test CanRepeat arguments
 	// TODO: Test CanRepeat post and prefix  cp <src> <src> <dst>
 }

@@ -351,8 +351,8 @@ func (p *Parser) nextSubCmd() CommandFunc {
 	cmdNodes := p.syntax.FindWithFlag(isCommand)
 	if cmdNodes != nil && len(cmdNodes) != 0 {
 		for _, node := range cmdNodes {
-			if !node.CmdHandled {
-				node.CmdHandled = true
+			if !node.Flags.Has(cmdHandled) {
+				node.Flags.Set(cmdHandled, true)
 				return cmdNodes[0].Rule.CommandFunc
 			}
 		}
