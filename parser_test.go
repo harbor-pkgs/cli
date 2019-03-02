@@ -414,3 +414,8 @@ func TestCanRepeat(t *testing.T) {
 // TODO: Test interspersed arguments <arg0> <arg1> <cmd> <arg0>
 // TODO: sub command usage should include <command> in usage line
 // TODO: Test for flags that start with or contain a number -v3  -2Knds
+// TODO: Test docker run -it -P 80:80 <image> <command> <-command-flag> -it -P blah
+//  maybe a parser.Add(Argument{Flags: greedy|stop}) to stop processing any args or flags after
+//  while scanning flags/args count the number of unknown args, once unknown args is greater than the stop, then
+//  ignore flags after.
+// TODO: parser.Add(Stop{Marker: "--"}) will instruct that no arg parsing will occur after the "--" marker

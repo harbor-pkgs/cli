@@ -3,7 +3,6 @@ package cli
 import (
 	"fmt"
 	"regexp"
-	"sort"
 	"strings"
 
 	"github.com/davecgh/go-spew/spew"
@@ -34,21 +33,14 @@ func (r ruleList) String() string {
 	return strings.Join(lines, "\n")
 }
 
-// TODO: Consider removing this
-func (r *ruleList) SortRulesWithFlag(flag Flags) ruleList {
+func (r *ruleList) GetRulesWithFlag(flag Flags) ruleList {
 	var results ruleList
 
-	var sorted []string
 	for _, rule := range *r {
 		if !rule.HasFlag(flag) {
 			continue
 		}
-		sorted = append(sorted, rule.Name)
-	}
-	sort.Strings(sorted)
-
-	for _, ruleName := range sorted {
-		results = append(results, r.GetRule(ruleName))
+		results = append(results, rule)
 	}
 	return results
 }

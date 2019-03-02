@@ -71,8 +71,8 @@ type Parser struct {
 	cfg Config
 	// The arguments we are tasked with parsing
 	argv []string
-	// The current state of the syntax we have parsed
-	syntax *linearSyntax
+	// The current state of the abstract we have parsed
+	abstract *abstract
 	// Sorted list of parsing rules
 	rules ruleList
 	// Our parent parser if this instance is a sub-parser
@@ -107,7 +107,7 @@ func New(config *Config) *Parser {
 	/*if parent.rules != nil {
 		p.parent = parent
 		p.argv = parent.argv
-		p.syntax = parent.syntax
+		p.abstract = parent.abstract
 		p.rules = parent.rules
 		p.stores = parent.stores
 		p.seqCount = parent.seqCount
@@ -146,8 +146,8 @@ func (p *Parser) ParseOrExit() {
 // TODO: Support out of band command bash completions and in-band bash completions
 // Parses command line arguments using os.Args if 'args' is nil.
 func (p *Parser) Parse(ctx context.Context, argv []string) (int, error) {
-	// Clear any previously parsed syntax
-	p.syntax = nil
+	// Clear any previously parsed abstract
+	p.abstract = nil
 
 	// Report Add() errors
 	if len(p.errs) != 0 {
@@ -201,7 +201,7 @@ func (p *Parser) Parse(ctx context.Context, argv []string) (int, error) {
 
 	// Scan the argv and attempt to assign rules to argv positions, this is
 	// only a best effort since a sub command might add new options and args.
-	if p.syntax, err = scanArgv(p); err != nil {
+	if p.abstract, err = scanArgv(p); err != nil {
 		fmt.Println("scan fail")
 		// report options that expect values
 		return ErrorRetCode, err
@@ -213,18 +213,22 @@ func (p *Parser) Parse(ctx context.Context, argv []string) (int, error) {
 		return subCmd(ctx, New(p))
 	}*/
 
-	fmt.Printf("syntax: %s\n", p.syntax.String())
+	fmt.Printf("abstract: %s\n", p.abstract.String())
 	// --help is a special case option, as it short circuits the normal store
 	// and validation of arguments. This allows the user to pass other arguments
 	// along side -h and still get a help message before getting invalid arg errors
 	// TODO: Support other short circuit options besides -h, in the case a user wishes to
 	// TODO: Not use -h has the help option.
-	if p.syntax.FindWithFlag(isHelpRule) != nil {
+	if p.abstract.FindWithFlag(isHelpRule) != nil {
 		fmt.Printf("type %s\n", reflect.TypeOf(&HelpError{}))
 		return ErrorRetCode, &HelpError{}
 	}
 
-	// If we get here, we are at the top of the parent tree and are ready to store values
+	// If we get here, we are at the top of the parent tree and we can assign positional arguments
+	if err := p.applyArguments(); err != nil {
+		return ErrorRetCode, err
+	}
+
 	results := newResultStore(p.rules)
 
 	// TODO: Put all the stores in `p.stores` and process them in this for loop.
@@ -242,7 +246,7 @@ func (p *Parser) Parse(ctx context.Context, argv []string) (int, error) {
 		return ErrorRetCode, err
 	}
 	fmt.Printf("Env store: %+v\n", results.values)
-	if err := results.From(ctx, p.syntax); err != nil {
+	if err := results.From(ctx, p.abstract); err != nil {
 		return ErrorRetCode, err
 	}
 	fmt.Printf("Syntax store: %+v\n", results.values)
@@ -328,15 +332,47 @@ func (p *Parser) AddStore(store FromStore) {
 	p.stores = append(p.stores, store)
 }
 
+func (p *Parser) applyArguments() error {
+	// TODO: Multiple arguments with greedy flag is not allowed
+	// TODO: Arguments with default values that follow greedy arguments are not allowed. (ambiguous)
+	rules := p.rules.GetRulesWithFlag(isArgument)
+	args := p.abstract.UnknownArgs()
+
+	// If there are not enough args left for each argument rule
+	if len(args) <= len(rules) {
+		// Simple algo, each rule is assigned to each args until the args run out
+		return
+	}
+
+	// Either there is a greedy argument, or we have unknown args
+
+	// Assign rules to arg until we find a greedy rule, gobble up all the args
+	// then start at the bottom of the rules and work our way back up to the greedy rule
+
+	// Returns true if we found a greedy rule
+	if apply(rules, args, true) {
+		// If we find greedy
+		// Reverse the order of the args and rules
+		// and apply again until we hit the greedy rule and stop
+		apply(rules, args, false)
+	}
+	return nil
+}
+
+func apply(rules ruleList, args nodeList) bool {
+
+}
+
 // Returns a list of all unknown arguments found on the command line if `ErrOnUnknownArgs = true`
+// TODO: Use UnknownArgs() from abstract
 func (p *Parser) UnProcessedArgs() []string {
-	if p.syntax == nil {
+	if p.abstract == nil {
 		return []string{}
 	}
 
 	var r []string
 	for i, arg := range p.argv {
-		if !p.syntax.Contains(i) {
+		if !p.abstract.Contains(i) {
 			r = append(r, arg)
 		}
 	}
@@ -344,11 +380,11 @@ func (p *Parser) UnProcessedArgs() []string {
 }
 
 func (p *Parser) nextSubCmd() CommandFunc {
-	if p.syntax == nil {
+	if p.abstract == nil {
 		return nil
 	}
 
-	cmdNodes := p.syntax.FindWithFlag(isCommand)
+	cmdNodes := p.abstract.FindWithFlag(isCommand)
 	if cmdNodes != nil && len(cmdNodes) != 0 {
 		for _, node := range cmdNodes {
 			if !node.Flags.Has(cmdHandled) {

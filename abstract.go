@@ -7,7 +7,7 @@ import (
 	"strings"
 )
 
-type node struct {
+type absNode struct {
 	Pos    int
 	Offset int
 	Value  *string
@@ -15,30 +15,32 @@ type node struct {
 	Flags  Flags
 	/*IsCmd      bool
 	CmdHandled bool*/
-	ValueFor *node
+	ValueFor *absNode
 }
 
 // Returns true if this node associated with a rule
-func (n *node) HasRule() bool {
+func (n *absNode) HasRule() bool {
 	return n.Rule != nil || n.ValueFor != nil
 }
 
-type nodes []*node
-type linearSyntax struct {
-	nodes []*node
+type nodeList []*absNode
+
+// TODO: Rename this 'abstract'
+type abstract struct {
+	nodes []*absNode
 	rules ruleList
 }
 
-func newLinearSyntax(parser *Parser) *linearSyntax {
-	return &linearSyntax{
+func newAbstract(parser *Parser) *abstract {
+	return &abstract{
 		rules: parser.rules,
 	}
 }
 
 // Returns the all nodes that have the specified rule
-func (s *linearSyntax) FindRules(rule *rule) nodes {
-	var result nodes
-	for _, node := range s.nodes {
+func (a *abstract) FindRules(rule *rule) nodeList {
+	var result nodeList
+	for _, node := range a.nodes {
 		if node.Rule == rule {
 			result = append(result, node)
 		}
@@ -46,9 +48,9 @@ func (s *linearSyntax) FindRules(rule *rule) nodes {
 	return result
 }
 
-func (s *linearSyntax) FindWithFlag(flag Flags) nodes {
-	var result nodes
-	for _, node := range s.nodes {
+func (a *abstract) FindWithFlag(flag Flags) nodeList {
+	var result nodeList
+	for _, node := range a.nodes {
 		if node.Rule != nil && node.Rule.HasFlag(flag) {
 			result = append(result, node)
 		}
@@ -56,14 +58,28 @@ func (s *linearSyntax) FindWithFlag(flag Flags) nodes {
 	return result
 }
 
-func (s *linearSyntax) Add(n *node) {
+func (a *abstract) Add(n *absNode) {
 	fmt.Printf("Add %+v\n", n)
-	s.nodes = append(s.nodes, n)
+	a.nodes = append(a.nodes, n)
+}
+
+// Return nodes that have no rule attached
+func (a *abstract) UnknownArgs() nodeList {
+	var results nodeList
+	for k, v := range a.nodes {
+		if v != nil {
+			if !v.HasRule() {
+				results = append(results, v)
+			}
+		}
+		results = append(results, &absNode{Pos: k})
+	}
+	return results
 }
 
 // Returns true if the argument at the specified position is an option
-func (s *linearSyntax) AtPos(pos int) *node {
-	for _, node := range s.nodes {
+func (a *abstract) AtPos(pos int) *absNode {
+	for _, node := range a.nodes {
 		if node.Pos == pos {
 			return node
 		}
@@ -72,8 +88,9 @@ func (s *linearSyntax) AtPos(pos int) *node {
 }
 
 // Returns true if at least one rule matched the given argument position
-func (s *linearSyntax) Contains(pos int) bool {
-	for _, node := range s.nodes {
+// TODO: Remove?
+func (a *abstract) Contains(pos int) bool {
+	for _, node := range a.nodes {
 		if node.Pos == pos {
 			return node.HasRule()
 		}
@@ -81,21 +98,21 @@ func (s *linearSyntax) Contains(pos int) bool {
 	return false
 }
 
-func (s *linearSyntax) String() string {
+func (a *abstract) String() string {
 	var lines []string
-	for i := 0; i < len(s.nodes); i++ {
+	for i := 0; i < len(a.nodes); i++ {
 		var name string
-		if s.nodes[i].Rule != nil {
-			name = s.nodes[i].Rule.Name
+		if a.nodes[i].Rule != nil {
+			name = a.nodes[i].Rule.Name
 		}
-		lines = append(lines, fmt.Sprintf("[%d] '%s' - %+v", i, name, s.nodes[i]))
+		lines = append(lines, fmt.Sprintf("[%d] '%s' - %+v", i, name, a.nodes[i]))
 	}
 	return strings.Join(lines, "\n")
 }
 
-func (s *linearSyntax) Get(ctx context.Context, key string, flags Flags) (interface{}, int, error) {
+func (a *abstract) Get(ctx context.Context, key string, flags Flags) (interface{}, int, error) {
 	//fmt.Printf("Get(%s,%s)\n", key, kind)
-	rule := s.rules.GetRule(key)
+	rule := a.rules.GetRule(key)
 	if rule == nil {
 		return "", 0, nil
 	}
@@ -105,7 +122,7 @@ func (s *linearSyntax) Get(ctx context.Context, key string, flags Flags) (interf
 	var values []string
 	var count int
 	// collect all the values for this rule
-	for _, node := range s.FindRules(rule) {
+	for _, node := range a.FindRules(rule) {
 		count++
 		if node.Value != nil {
 			values = append(values, *node.Value)
@@ -153,6 +170,6 @@ func convToKind(values []string, flags Flags, count int) (interface{}, int, erro
 	return nil, 0, errors.New("invalid rule; missing (ScalarKind|SliceKind|MapKind) in flags")
 }
 
-func (p *linearSyntax) Source() string {
+func (a *abstract) Source() string {
 	return cliSource
 }

@@ -21,41 +21,51 @@ func (a sortByLen) Swap(i, j int) {
 }
 
 type scanner struct {
-	syntax  *linearSyntax
-	aliases sortByLen
-	rules   ruleList
-	argv    []string
-	mode    Mode
+	abstract *abstract
+	aliases  sortByLen
+	rules    ruleList
+	argv     []string
+	mode     Mode
 }
 
-// Scan the argv for options and arguments and add them to our linear syntax store
-func scanArgv(p *Parser) (*linearSyntax, error) {
+// Scan the argv for options and arguments and add them to our linear abstract store
+func scanArgv(p *Parser) (*abstract, error) {
 	// Collect all the option aliases and sort them by length such that when looking for matching option we match
 	// option names before short aliases (-a is not a match for -amend)
 	var sortedAliases sortByLen = p.rules.GetAliases()
 	sort.Sort(sortedAliases)
 
 	s := &scanner{
-		syntax:  newLinearSyntax(p),
-		aliases: sortedAliases,
-		rules:   p.rules,
-		argv:    p.argv,
-		mode:    p.cfg.Mode,
+		abstract: newAbstract(p),
+		aliases:  sortedAliases,
+		rules:    p.rules,
+		argv:     p.argv,
+		mode:     p.cfg.Mode,
 	}
 
+	// TODO: No need for this function to be recursive, we can simply use a for loop
+	// Look for stop arg, and count the number of possible positional args until stop
 	// First scan for options
 	if err := s.scanOptions(0); err != nil {
 		return nil, err
 	}
 
-	// Argument parsing is not allowed if un-prefixed options is set
-	// TODO: This should be checked in the preflight validation and not here
-	if !s.hasMode(AllowUnPrefixedOptions) {
-		// Scan for non-option arguments and sub commands
-		s.scanArgs()
+	// TODO: Look for commands before assigning arguments
+	/*for _, rule := range s.rules {
+		if rule.HasFlag(isCommand) {
+
+	}
+	}*/
+
+	// Add nodes for any args which do not have a node
+	for i := range s.argv {
+		node := s.abstract.AtPos(i)
+		if node == nil {
+			s.abstract.Add(&absNode{Pos: i})
+		}
 	}
 
-	return s.syntax, nil
+	return s.abstract, nil
 }
 
 func (s *scanner) scanOptions(argPos int) error {
@@ -84,34 +94,6 @@ func (s *scanner) scanOptions(argPos int) error {
 	return s.scanOptions(argPos + 1)
 }
 
-func (s *scanner) scanArgs() {
-
-	// TODO: Look for commands before assigning arguments
-	/*if rule.HasFlag(isCommand) {
-
-	}*/
-	for _, rule := range s.rules {
-		if rule.HasFlag(isArgument) {
-			// Find an argument that is not already matched with a rule
-			for i, arg := range s.argv {
-				pos := s.syntax.AtPos(i)
-				if pos != nil {
-					// If the argv position is an option or already has a rule assigned
-					if pos.Flags.Has(isOption) || pos.Rule != nil {
-						continue
-					}
-				}
-				s.syntax.Add(&node{
-					Pos:   i,
-					Value: &arg,
-					Rule:  rule,
-				})
-				break
-			}
-		}
-	}
-}
-
 func (s *scanner) scanOption(argPos, charPos int, allowCombinedOptions bool) error {
 	// sanity check
 	/*char := rune(s.argv[argPos][charPos])
@@ -137,8 +119,8 @@ func (s *scanner) scanOption(argPos, charPos int, allowCombinedOptions bool) err
 
 		// The option did not match any aliases
 		if rule == nil {
-			s.syntax.Add(&node{
-				Flags:  isOption,
+			s.abstract.Add(&absNode{
+				Flags:  isOption, // TODO: Remove isOption here?
 				Pos:    argPos,
 				Offset: charPos,
 			})
@@ -156,14 +138,14 @@ func (s *scanner) scanOption(argPos, charPos int, allowCombinedOptions bool) err
 				if len(s.argv) <= argPos+1 {
 					return fmt.Errorf("expected option '%s' to have a value", s.argv[argPos])
 				}
-				optionNode := &node{
+				optionNode := &absNode{
 					Flags: isOption,
 					Pos:   argPos,
 					Value: &s.argv[argPos+1],
 					Rule:  rule,
 				}
-				s.syntax.Add(optionNode)
-				s.syntax.Add(&node{
+				s.abstract.Add(optionNode)
+				s.abstract.Add(&absNode{
 					Flags:    isOption,
 					Pos:      argPos + 1,
 					ValueFor: optionNode,
@@ -177,7 +159,7 @@ func (s *scanner) scanOption(argPos, charPos int, allowCombinedOptions bool) err
 				}
 				// the remainder of the option is the value
 				value := option[end+2:]
-				s.syntax.Add(&node{
+				s.abstract.Add(&absNode{
 					Flags: isOption,
 					Pos:   argPos,
 					Value: &value,
@@ -189,7 +171,7 @@ func (s *scanner) scanOption(argPos, charPos int, allowCombinedOptions bool) err
 			if s.hasMode(AllowCombinedValues) {
 				// the remainder of the option is the value
 				value := option[end:]
-				s.syntax.Add(&node{
+				s.abstract.Add(&absNode{
 					Flags: isOption,
 					Pos:   argPos,
 					Value: &value,
@@ -200,7 +182,7 @@ func (s *scanner) scanOption(argPos, charPos int, allowCombinedOptions bool) err
 			// If we get here, then we matched part of the option, but it's not our option because
 			// we expected a value and no value was provided. We know this because we sort our
 			// matchable aliases by length such that the longest option will match first.
-			s.syntax.Add(&node{
+			s.abstract.Add(&absNode{
 				Flags:  isOption,
 				Pos:    argPos,
 				Offset: charPos,
@@ -210,8 +192,8 @@ func (s *scanner) scanOption(argPos, charPos int, allowCombinedOptions bool) err
 		// Not Expecting value
 
 		fmt.Printf("added rule '%s' at pos '%d'\n", rule.Name, argPos)
-		// Add the rule and position to our syntax
-		s.syntax.Add(&node{
+		// Add the rule and position to our abstract
+		s.abstract.Add(&absNode{
 			Flags: isOption,
 			Pos:   argPos,
 			Rule:  rule,

@@ -268,8 +268,8 @@ func (p *Parser) Replace(variants ...Variant) error {
 		rule.Sequence = p.rules[idx].Sequence
 		p.rules[idx] = rule
 
-		// Any previously parsed syntax is now invalid
-		p.syntax = nil
+		// Any previously parsed abstract is now invalid
+		p.abstract = nil
 	}
 	return nil
 }
