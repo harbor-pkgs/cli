@@ -1,0 +1,125 @@
+CLI USE CASES
+
+The Docker Use Case
+
+ |---0---|--1--|--2--|-------3------|----4----|-----------5-------------|
+   docker  -d    run   -it -P 80:80   <image>   /bin/bash  -it -P blah
+
+
+0. Arg0
+1. Option flags that are defined by the root parser
+2. The 'run' sub-command
+3. Sub-command flags
+4. Sub-command first argument
+5. These args are not evaluated, but collected and passed to the container
+
+NOTES:
+ 1. In this case the first parse() evaluator should only parse 'flags' that fall between arg0 and the first sub-command
+ 2. We must stop evaluating after 4
+ 3. Eval must support flag concatenation [-it] which is 2 flags together [-i -t]
+ 4. On first parse, Eval will attempt to match 5 with '-it -P blah' but since we are using the fall between rule
+    no errors will be generated on the first parse.
+
+
+The Interspersed Argument Use Case
+ |-----0----|------------1------------|--2--|------3---------|-------4-----|--5--|
+   net-copy   file1 file2 file3 file4   to    -bucket=backup   dest1 dest2   -v
+
+0. Arg0
+1. List of files to copy
+2. The 'to' sub-command
+3. sub-command flag
+4. List of destinations
+5. Arg0 flag
+
+
+NOTES:
+ 1 'positional args' should never be parsed outside of the bounds of a sub-command
+ 2. Arg0 flags (such as 5) *can* be allowed outside of the bounds of their command, but only if a parser flag
+    is used to asked for it.
+    (This wouldn't work for the docker use case as the first parse might think 5 had flags for them to parse
+    and -P without a port number would generate an error on first parse)
+
+
+The file copy Use Case
+ |--0--|------------1------------|---2---|
+   cp    file1 file2 file3 file4    dest
+
+0. Arg0
+1. List of file to copy
+2. Destination directory
+
+NOTES:
+ 1. Only 1 positional argument can follow a greedy positional argument. For instance `cp file1 file2 dest1 dest2`
+    is ambiguous, how do you know `dest1` isn't a file, but instead a dest?
+
+The `ps` Use Case
+ |--0--|--1--|
+   ps    aux
+
+0. Arg0
+1. concatenated flags with no `-` prefix to indicate they are flags.
+
+NOTES
+  1. Concat flags with no `-` prefix are only allowed with a special parser flag as their use can be ambiguous with
+  positional arguments. IE `ps aux aux` which is the positional argument and which is are the flags?
+
+
+The `git --amend` Use Case
+ |--0--|----1---|--------2---------|
+   git   -amend   "Commit message"
+
+0. Arg0
+1. Flags or a Flag?
+2. First argument
+
+NOTES:
+  1. The flags at 1 can be ambiguous if the user made a typo and passes `-amend` that is `-a -m -e -n -d` but in
+     concat form. However if the user passed `--amend` that is a single flag to amend the commit.
+  2. Other parsers (golang flags) allow a short prefix for a long name `-amend` or `--amend` is valid
+  3. We support both forms, but will match the word `amend` before considering shorter flags when searching for
+     the concat form.
+  4. We should NOT support more than a single character for concat flags. IE `-Lt -i` is not allowed as `-Lti` as
+     the number of flag permutations can become ambiguous. IE Given flags `-L -Lt -t -t` which flag was used when
+     provided as `-Lti`, '-Lt' ,'-t', '-Lt' or '-L'
+
+
+The end of flags Use Case
+
+  |--0--|--1--|--2--|--3--|--4---|
+   grep   -i    --    -i    file
+
+
+0. Arg0
+1. Ignore case flag
+1. Signifies end of flags
+2. Positional argument 1 (search for -i)
+4. Positional argument 2 (search in this file)
+
+NOTES:
+ 1. `--` is a special case that allows the user to pass in what would normally be considered a flag as an argument.
+ 2. Even if you quoted the second flag you could not search by `-i` without the `--`
+    IE: `grep -i "-i" test.txt` doesn't work as you might expect.
+ 3. TODO: Discover if this is a feature of `bash` or something the parser should support.
+
+
+Hidden Flags Use Case
+  Some deprecated but still available flags could be allowed but not shown to the user when --help is requested
+
+Special case flag handling Use Case
+  `-h` is a special case flag, as it by passes all the normal checks and exists the parser early to display help.
+  the user might want to change the -h to -H as such we should allow the user to mark different arguments with
+  special early exit handling.
+
+Dependent flags Use Case
+  `--duration` argument might only be useful if the user also supplied `--with-timeout`. As such the parser
+  should look for dependent flags.
+
+Parse args from a file Use Case
+  Some command line apps have hundreds of arguments (like dnsmasq) Allow users to read arguments from a file as
+  if they were given via `argv`
+
+  NOTES:
+   1. Support the simple `key=value` use case, this is not full ini parser support.
+
+

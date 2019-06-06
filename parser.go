@@ -341,7 +341,7 @@ func (p *Parser) applyArguments() error {
 	// If there are not enough args left for each argument rule
 	if len(args) <= len(rules) {
 		// Simple algo, each rule is assigned to each args until the args run out
-		return
+		return nil
 	}
 
 	// Either there is a greedy argument, or we have unknown args
@@ -350,17 +350,18 @@ func (p *Parser) applyArguments() error {
 	// then start at the bottom of the rules and work our way back up to the greedy rule
 
 	// Returns true if we found a greedy rule
-	if apply(rules, args, true) {
+	if apply(rules, args) {
 		// If we find greedy
 		// Reverse the order of the args and rules
 		// and apply again until we hit the greedy rule and stop
-		apply(rules, args, false)
+		apply(rules, args)
 	}
 	return nil
 }
 
 func apply(rules ruleList, args nodeList) bool {
-
+	// TODO: Fix me
+	return false
 }
 
 // Returns a list of all unknown arguments found on the command line if `ErrOnUnknownArgs = true`
