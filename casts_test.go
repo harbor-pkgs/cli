@@ -22,19 +22,19 @@ func TestInvalidStoreType(t *testing.T) {
 	var aInt [2]int
 
 	tests := []struct {
-		opt *cli.Option
+		opt *cli.Flag
 		err string
 	}{
 		{
-			opt: &cli.Option{Name: "foo", Store: &integer32},
+			opt: &cli.Flag{Name: "foo", Store: &integer32},
 			err: "invalid 'Store' while adding option 'foo': cannot store 'uint32'; type not supported",
 		},
 		{
-			opt: &cli.Option{Name: "foo", Store: integer},
+			opt: &cli.Flag{Name: "foo", Store: integer},
 			err: "invalid 'Store' while adding option 'foo': cannot use non pointer type 'int'; must provide a pointer",
 		},
 		{
-			opt: &cli.Option{Name: "foo", Store: &aInt},
+			opt: &cli.Flag{Name: "foo", Store: &aInt},
 			err: "invalid 'Store' while adding option 'foo': cannot store '[2]int'; only slices supported",
 		},
 	}
@@ -53,8 +53,8 @@ func TestInvalidStoreType(t *testing.T) {
 func TestMultpleOptionSameStore(t *testing.T) {
 	var foo string
 	p := cli.New(nil)
-	p.Add(&cli.Option{Name: "foo", Store: &foo})
-	p.Add(&cli.Option{Name: "bar", Store: &foo})
+	p.Add(&cli.Flag{Name: "foo", Store: &foo})
+	p.Add(&cli.Flag{Name: "bar", Store: &foo})
 
 	// Given
 	retCode, err := p.Parse(nil, []string{"--foo", "bang"})
@@ -76,7 +76,7 @@ func TestMultpleOptionSameStore(t *testing.T) {
 func TestOptionDefaultScalar(t *testing.T) {
 	var foo string
 	p := cli.New(nil)
-	p.Add(&cli.Option{Name: "foo", Store: &foo, Default: "bash"})
+	p.Add(&cli.Flag{Name: "foo", Store: &foo, Default: "bash"})
 
 	// Given no value
 	retCode, err := p.Parse(nil, []string{})
@@ -98,7 +98,7 @@ func TestOptionDefaultScalar(t *testing.T) {
 func TestOptionDefaultList(t *testing.T) {
 	var foo []string
 	p := cli.New(nil)
-	p.Add(&cli.Option{Name: "foo", Store: &foo, Default: "bash,bar,foo"})
+	p.Add(&cli.Flag{Name: "foo", Store: &foo, Default: "bash,bar,foo"})
 
 	// Given no value
 	retCode, err := p.Parse(nil, []string{})
@@ -123,7 +123,7 @@ func TestOptionDefaultMap(t *testing.T) {
 	var count int
 
 	p := cli.New(nil)
-	p.Add(&cli.Option{Name: "foo", Store: &foo, Default: "bar=foo,foo=bar"})
+	p.Add(&cli.Flag{Name: "foo", Store: &foo, Default: "bar=foo,foo=bar"})
 
 	// Given
 	retCode, err := p.Parse(nil, []string{})
@@ -144,7 +144,7 @@ func TestOptionWithBoolSlice(t *testing.T) {
 
 	p := cli.New(nil)
 	// Count implies 'CanRepeat=true'
-	p.Add(&cli.Option{Name: "foo", Store: &foo, Count: &count, Aliases: []string{"f"}})
+	p.Add(&cli.Flag{Name: "foo", Store: &foo, Count: &count, Aliases: []string{"f"}})
 
 	// Positive test
 	retCode, err := p.Parse(nil, []string{"--foo", "true", "-f", "false", "-f", "true"})
@@ -166,7 +166,7 @@ func TestOptionWithSlice(t *testing.T) {
 
 	p := cli.New(nil)
 	// Count implies 'CanRepeat=true'
-	p.Add(&cli.Option{Name: "foo", Store: &foo, Count: &count, Aliases: []string{"f"}})
+	p.Add(&cli.Flag{Name: "foo", Store: &foo, Count: &count, Aliases: []string{"f"}})
 
 	// Given
 	retCode, err := p.Parse(nil, []string{"--foo", "bar,bang", "-f", "foo"})
@@ -184,7 +184,7 @@ func TestOptionStringMap(t *testing.T) {
 
 	p := cli.New(nil)
 	// Count implies 'CanRepeat=true'
-	p.Add(&cli.Option{Name: "foo", Store: &foo, Count: &count, Aliases: []string{"f"}})
+	p.Add(&cli.Flag{Name: "foo", Store: &foo, Count: &count, Aliases: []string{"f"}})
 
 	// Given
 	retCode, err := p.Parse(nil, []string{"--foo", "bar=foo", "-f", "foo=bar"})
@@ -205,7 +205,7 @@ func TestOptionIntMap(t *testing.T) {
 
 	p := cli.New(nil)
 	// Count implies 'CanRepeat=true'
-	p.Add(&cli.Option{Name: "foo", Store: &foo, Count: &count, Aliases: []string{"f"}})
+	p.Add(&cli.Flag{Name: "foo", Store: &foo, Count: &count, Aliases: []string{"f"}})
 
 	// Positive test
 	retCode, err := p.Parse(nil, []string{"--foo", "bar=1,cat=3", "-f", "foo=2"})
@@ -232,7 +232,7 @@ func TestOptionBoolMap(t *testing.T) {
 
 	p := cli.New(nil)
 	// Count implies 'CanRepeat=true'
-	p.Add(&cli.Option{Name: "foo", Store: &foo, Count: &count, Aliases: []string{"f"}})
+	p.Add(&cli.Flag{Name: "foo", Store: &foo, Count: &count, Aliases: []string{"f"}})
 
 	// Positive test
 	retCode, err := p.Parse(nil, []string{"--foo", "bar=true,cat=false", "-f", "foo=true"})
@@ -259,7 +259,7 @@ func TestInvalidMapType(t *testing.T) {
 
 	p := cli.New(nil)
 	// Count implies 'CanRepeat=true'
-	p.Add(&cli.Option{Name: "foo", Store: &foo, Count: &count, Aliases: []string{"f"}})
+	p.Add(&cli.Flag{Name: "foo", Store: &foo, Count: &count, Aliases: []string{"f"}})
 
 	// Given
 	retCode, err := p.Parse(nil, []string{"--foo", "bar=1"})
@@ -276,7 +276,7 @@ func TestOptionWithMapAndJSON(t *testing.T) {
 
 	p := cli.New(nil)
 	// Count implies 'CanRepeat=true'
-	p.Add(&cli.Option{Name: "foo", Store: &foo, Count: &count, Aliases: []string{"f"}})
+	p.Add(&cli.Flag{Name: "foo", Store: &foo, Count: &count, Aliases: []string{"f"}})
 
 	// Given
 	retCode, err := p.Parse(nil, []string{"--foo", `{"bar":"foo"}`, "-f", `{"foo": "bar", "bash": "bang"}`})
@@ -326,7 +326,7 @@ func TestSetValueInterface(t *testing.T) {
 	var cords cordinates
 
 	p := cli.New(nil)
-	p.Add(&cli.Option{
+	p.Add(&cli.Flag{
 		Flags:   cli.CanRepeat | cli.NoSplit,
 		Aliases: []string{"p"},
 		Name:    "point",
@@ -384,20 +384,20 @@ func TestBoolConv(t *testing.T) {
 		exp bool
 		val string
 	}{
-		{v: &cli.Option{Name: "foo", Store: &ts.BoolOpt}, val: "true", exp: true},
-		{v: &cli.Option{Name: "foo", Store: &ts.BoolOpt}, val: "TRUE", exp: true},
-		{v: &cli.Option{Name: "foo", Store: &ts.BoolOpt}, val: "True", exp: true},
-		{v: &cli.Option{Name: "foo", Store: &ts.BoolOpt}, val: "false", exp: false},
-		{v: &cli.Option{Name: "foo", Store: &ts.BoolOpt}, val: "FALSE", exp: false},
-		{v: &cli.Option{Name: "foo", Store: &ts.BoolOpt}, val: "False", exp: false},
-		{v: &cli.Option{Name: "foo", Store: &ts.BoolOpt}, val: "yes", exp: true},
-		{v: &cli.Option{Name: "foo", Store: &ts.BoolOpt}, val: "YES", exp: true},
-		{v: &cli.Option{Name: "foo", Store: &ts.BoolOpt}, val: "Yes", exp: true},
-		{v: &cli.Option{Name: "foo", Store: &ts.BoolOpt}, val: "no", exp: false},
-		{v: &cli.Option{Name: "foo", Store: &ts.BoolOpt}, val: "NO", exp: false},
-		{v: &cli.Option{Name: "foo", Store: &ts.BoolOpt}, val: "No", exp: false},
-		{v: &cli.Option{Name: "foo", Store: &ts.BoolOpt}, val: "0", exp: false},
-		{v: &cli.Option{Name: "foo", Store: &ts.BoolOpt}, val: "1", exp: true},
+		{v: &cli.Flag{Name: "foo", Store: &ts.BoolOpt}, val: "true", exp: true},
+		{v: &cli.Flag{Name: "foo", Store: &ts.BoolOpt}, val: "TRUE", exp: true},
+		{v: &cli.Flag{Name: "foo", Store: &ts.BoolOpt}, val: "True", exp: true},
+		{v: &cli.Flag{Name: "foo", Store: &ts.BoolOpt}, val: "false", exp: false},
+		{v: &cli.Flag{Name: "foo", Store: &ts.BoolOpt}, val: "FALSE", exp: false},
+		{v: &cli.Flag{Name: "foo", Store: &ts.BoolOpt}, val: "False", exp: false},
+		{v: &cli.Flag{Name: "foo", Store: &ts.BoolOpt}, val: "yes", exp: true},
+		{v: &cli.Flag{Name: "foo", Store: &ts.BoolOpt}, val: "YES", exp: true},
+		{v: &cli.Flag{Name: "foo", Store: &ts.BoolOpt}, val: "Yes", exp: true},
+		{v: &cli.Flag{Name: "foo", Store: &ts.BoolOpt}, val: "no", exp: false},
+		{v: &cli.Flag{Name: "foo", Store: &ts.BoolOpt}, val: "NO", exp: false},
+		{v: &cli.Flag{Name: "foo", Store: &ts.BoolOpt}, val: "No", exp: false},
+		{v: &cli.Flag{Name: "foo", Store: &ts.BoolOpt}, val: "0", exp: false},
+		{v: &cli.Flag{Name: "foo", Store: &ts.BoolOpt}, val: "1", exp: true},
 	}
 
 	for i, test := range tests {
@@ -426,17 +426,17 @@ func TestScalarKind(t *testing.T) {
 		// String
 		{
 			cmp:  func(msg string) { assert.Equal(t, "foobar", ts.StringOpt, msg) },
-			v:    &cli.Option{Name: "foo", Store: &ts.StringOpt},
+			v:    &cli.Flag{Name: "foo", Store: &ts.StringOpt},
 			args: []string{"--foo", "foobar"},
 		},
 		{
 			cmp:  func(msg string) { assert.Equal(t, "default-foo", ts.StringOpt, msg) },
-			v:    &cli.Option{Name: "foo", Store: &ts.StringOpt, Default: "default-foo"},
+			v:    &cli.Flag{Name: "foo", Store: &ts.StringOpt, Default: "default-foo"},
 			args: []string{},
 		},
 		{
 			cmp:  func(msg string) { assert.Equal(t, "env-foo", ts.StringOpt, msg) },
-			v:    &cli.Option{Name: "foo", Store: &ts.StringOpt, Env: "FOO"},
+			v:    &cli.Flag{Name: "foo", Store: &ts.StringOpt, Env: "FOO"},
 			args: []string{},
 			env:  "env-foo",
 		},
@@ -444,17 +444,17 @@ func TestScalarKind(t *testing.T) {
 		// Int
 		{
 			cmp:  func(msg string) { assert.Equal(t, 42, ts.IntOpt, msg) },
-			v:    &cli.Option{Name: "foo", Store: &ts.IntOpt},
+			v:    &cli.Flag{Name: "foo", Store: &ts.IntOpt},
 			args: []string{"--foo", "42"},
 		},
 		{
 			cmp:  func(msg string) { assert.Equal(t, 255, ts.IntOpt, msg) },
-			v:    &cli.Option{Name: "foo", Store: &ts.IntOpt, Default: "255"},
+			v:    &cli.Flag{Name: "foo", Store: &ts.IntOpt, Default: "255"},
 			args: []string{},
 		},
 		{
 			cmp:  func(msg string) { assert.Equal(t, 500, ts.IntOpt, msg) },
-			v:    &cli.Option{Name: "foo", Store: &ts.IntOpt, Env: "FOO"},
+			v:    &cli.Flag{Name: "foo", Store: &ts.IntOpt, Env: "FOO"},
 			args: []string{},
 			env:  "500",
 		},
@@ -462,17 +462,17 @@ func TestScalarKind(t *testing.T) {
 		// Boolean
 		{
 			cmp:  func(msg string) { assert.Equal(t, true, ts.BoolOpt, msg) },
-			v:    &cli.Option{Name: "foo", Store: &ts.BoolOpt},
+			v:    &cli.Flag{Name: "foo", Store: &ts.BoolOpt},
 			args: []string{"--foo", "true"},
 		},
 		{
 			cmp:  func(msg string) { assert.Equal(t, true, ts.BoolOpt, msg) },
-			v:    &cli.Option{Name: "foo", Store: &ts.BoolOpt, Default: "true"},
+			v:    &cli.Flag{Name: "foo", Store: &ts.BoolOpt, Default: "true"},
 			args: []string{},
 		},
 		{
 			cmp:  func(msg string) { assert.Equal(t, true, ts.BoolOpt, msg) },
-			v:    &cli.Option{Name: "foo", Store: &ts.BoolOpt, Env: "FOO"},
+			v:    &cli.Flag{Name: "foo", Store: &ts.BoolOpt, Env: "FOO"},
 			args: []string{},
 			env:  "true",
 		},
@@ -480,17 +480,17 @@ func TestScalarKind(t *testing.T) {
 		// Uint
 		{
 			cmp:  func(msg string) { assert.Equal(t, uint(0xFFFFFFFF), ts.UintOpt, msg) },
-			v:    &cli.Option{Name: "foo", Store: &ts.UintOpt},
+			v:    &cli.Flag{Name: "foo", Store: &ts.UintOpt},
 			args: []string{"--foo", "0xFFFFFFFF"},
 		},
 		{
 			cmp:  func(msg string) { assert.Equal(t, uint(0xC0FFEE), ts.UintOpt, msg) },
-			v:    &cli.Option{Name: "foo", Store: &ts.UintOpt, Default: "0xC0FFEE"},
+			v:    &cli.Flag{Name: "foo", Store: &ts.UintOpt, Default: "0xC0FFEE"},
 			args: []string{},
 		},
 		{
 			cmp:  func(msg string) { assert.Equal(t, uint(0xBAADF00D), ts.UintOpt, msg) },
-			v:    &cli.Option{Name: "foo", Store: &ts.UintOpt, Env: "FOO"},
+			v:    &cli.Flag{Name: "foo", Store: &ts.UintOpt, Env: "FOO"},
 			args: []string{},
 			env:  "0xBAADF00D",
 		},
@@ -498,17 +498,17 @@ func TestScalarKind(t *testing.T) {
 		// Int64
 		{
 			cmp:  func(msg string) { assert.Equal(t, int64(9223372036854775807), ts.Int64Opt, msg) },
-			v:    &cli.Option{Name: "foo", Store: &ts.Int64Opt},
+			v:    &cli.Flag{Name: "foo", Store: &ts.Int64Opt},
 			args: []string{"--foo", "9223372036854775807"},
 		},
 		{
 			cmp:  func(msg string) { assert.Equal(t, int64(9223372036854775800), ts.Int64Opt, msg) },
-			v:    &cli.Option{Name: "foo", Store: &ts.Int64Opt, Default: "9223372036854775800"},
+			v:    &cli.Flag{Name: "foo", Store: &ts.Int64Opt, Default: "9223372036854775800"},
 			args: []string{},
 		},
 		{
 			cmp:  func(msg string) { assert.Equal(t, int64(9223372036854775801), ts.Int64Opt, msg) },
-			v:    &cli.Option{Name: "foo", Store: &ts.Int64Opt, Env: "FOO"},
+			v:    &cli.Flag{Name: "foo", Store: &ts.Int64Opt, Env: "FOO"},
 			args: []string{},
 			env:  "9223372036854775801",
 		},
@@ -516,17 +516,17 @@ func TestScalarKind(t *testing.T) {
 		// Uint64
 		{
 			cmp:  func(msg string) { assert.Equal(t, uint64(0xFEEDFACECAFE), ts.Uint64Opt, msg) },
-			v:    &cli.Option{Name: "foo", Store: &ts.Uint64Opt},
+			v:    &cli.Flag{Name: "foo", Store: &ts.Uint64Opt},
 			args: []string{"--foo", "0xFEEDFACECAFE"},
 		},
 		{
 			cmp:  func(msg string) { assert.Equal(t, uint64(0xFEEDCAFEC0FFE), ts.Uint64Opt, msg) },
-			v:    &cli.Option{Name: "foo", Store: &ts.Uint64Opt, Default: "0xFEEDCAFEC0FFE"},
+			v:    &cli.Flag{Name: "foo", Store: &ts.Uint64Opt, Default: "0xFEEDCAFEC0FFE"},
 			args: []string{},
 		},
 		{
 			cmp:  func(msg string) { assert.Equal(t, uint64(0xF00DCAFEBEEF), ts.Uint64Opt, msg) },
-			v:    &cli.Option{Name: "foo", Store: &ts.Uint64Opt, Env: "FOO"},
+			v:    &cli.Flag{Name: "foo", Store: &ts.Uint64Opt, Env: "FOO"},
 			args: []string{},
 			env:  "0xF00DCAFEBEEF",
 		},
@@ -534,17 +534,17 @@ func TestScalarKind(t *testing.T) {
 		// Float64
 		{
 			cmp:  func(msg string) { assert.Equal(t, float64(3.14), ts.Float64Opt, msg) },
-			v:    &cli.Option{Name: "foo", Store: &ts.Float64Opt},
+			v:    &cli.Flag{Name: "foo", Store: &ts.Float64Opt},
 			args: []string{"--foo", "3.14"},
 		},
 		{
 			cmp:  func(msg string) { assert.Equal(t, float64(3.141), ts.Float64Opt, msg) },
-			v:    &cli.Option{Name: "foo", Store: &ts.Float64Opt, Default: "3.141"},
+			v:    &cli.Flag{Name: "foo", Store: &ts.Float64Opt, Default: "3.141"},
 			args: []string{},
 		},
 		{
 			cmp:  func(msg string) { assert.Equal(t, float64(3.1415), ts.Float64Opt, msg) },
-			v:    &cli.Option{Name: "foo", Store: &ts.Float64Opt, Env: "FOO"},
+			v:    &cli.Flag{Name: "foo", Store: &ts.Float64Opt, Env: "FOO"},
 			args: []string{},
 			env:  "3.1415",
 		},
@@ -552,17 +552,17 @@ func TestScalarKind(t *testing.T) {
 		// Duration
 		{
 			cmp:  func(msg string) { assert.Equal(t, time.Second, ts.DurationOpt, msg) },
-			v:    &cli.Option{Name: "foo", Store: &ts.DurationOpt},
+			v:    &cli.Flag{Name: "foo", Store: &ts.DurationOpt},
 			args: []string{"--foo", "1s"},
 		},
 		{
 			cmp:  func(msg string) { assert.Equal(t, time.Nanosecond, ts.DurationOpt, msg) },
-			v:    &cli.Option{Name: "foo", Store: &ts.DurationOpt, Default: "1ns"},
+			v:    &cli.Flag{Name: "foo", Store: &ts.DurationOpt, Default: "1ns"},
 			args: []string{},
 		},
 		{
 			cmp:  func(msg string) { assert.Equal(t, time.Minute, ts.DurationOpt, msg) },
-			v:    &cli.Option{Name: "foo", Store: &ts.DurationOpt, Env: "FOO"},
+			v:    &cli.Flag{Name: "foo", Store: &ts.DurationOpt, Env: "FOO"},
 			args: []string{},
 			env:  "1m",
 		},

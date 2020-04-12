@@ -28,11 +28,11 @@ type scanner struct {
 	mode     Mode
 }
 
-// Scan the argv for options and arguments and add them to our linear abstract store
+// Scan the argv for flags and arguments and add them to our linear abstract store
 func scanArgv(p *Parser) (*abstract, error) {
-	// Collect all the option aliases and sort them by length such that when looking for matching option we match
-	// option names before short aliases (-a is not a match for -amend)
-	var sortedAliases sortByLen = p.rules.GetAliases()
+	// Collect all the flag aliases and sort them by length such that when looking for matching flags we match
+	// long flag names before short flags (-a is not a match for -amend)
+	var sortedAliases sortByLen = p.rules.GetFlagAliases()
 	sort.Sort(sortedAliases)
 
 	s := &scanner{
@@ -45,8 +45,8 @@ func scanArgv(p *Parser) (*abstract, error) {
 
 	// TODO: No need for this function to be recursive, we can simply use a for loop
 	// Look for stop arg, and count the number of possible positional args until stop
-	// First scan for options
-	if err := s.scanOptions(0); err != nil {
+	// First scan for flags
+	if err := s.scanFlags(0); err != nil {
 		return nil, err
 	}
 
@@ -68,45 +68,45 @@ func scanArgv(p *Parser) (*abstract, error) {
 	return s.abstract, nil
 }
 
-func (s *scanner) scanOptions(argPos int) error {
+func (s *scanner) scanFlags(argPos int) error {
 	if len(s.argv) == argPos {
 		fmt.Println("no more args to scan")
 		return nil
 	}
 
 	if s.hasMode(AllowUnPrefixedOptions) {
-		if err := s.scanOption(argPos, 0, true); err != nil {
+		if err := s.scanFlag(argPos, 0, true); err != nil {
 			if !IsInvalidFlag(err) {
 				return err
 			}
 		}
 	} else {
 		if charPos := hasFlagPrefix(s.argv[argPos]); charPos != 0 {
-			fmt.Printf("has option prefix: %d\n", charPos)
+			fmt.Printf("has flag prefix: %d\n", charPos)
 			// TODO: If the charPos != 2, AND allowCombinedOptions then pass in true, else pass in false
-			// This allows us to disambiguate '-amend' (a bunch of combined option) and '--amend' a single option name
-			if err := s.scanOption(argPos, charPos, s.hasMode(AllowCombinedOptions)); err != nil {
+			// This allows us to disambiguate '-amend' (a bunch of combined flag) and '--amend' a single flag name
+			if err := s.scanFlag(argPos, charPos, s.hasMode(AllowCombinedOptions)); err != nil {
 				return err
 			}
 		}
 	}
 
-	return s.scanOptions(argPos + 1)
+	return s.scanFlags(argPos + 1)
 }
 
-func (s *scanner) scanOption(argPos, charPos int, allowCombinedOptions bool) error {
+func (s *scanner) scanFlag(argPos, charPos int, allowCombinedOptions bool) error {
 	// sanity check
 	/*char := rune(s.argv[argPos][charPos])
 	fmt.Printf("rune %q\n", char)
 	fmt.Printf("isLetter %t\n", unicode.IsLetter(char))
 	if !unicode.IsLetter(char) {
 		// TODO: Should this be an error? Or should we allow upstream to decide if this error is returned to the user
-		return &InvalidFlag{Msg: fmt.Sprintf("invalid character at pos '%d' for option '%s'",
+		return &InvalidFlag{Msg: fmt.Sprintf("invalid character at pos '%d' for flag '%s'",
 			charPos, s.argv[argPos])}
 	}*/
 
-	// Match option to aliases by first matching the entire option,
-	// then attempt matching a subset of the option. This allows
+	// Match flag to aliases by first matching the entire flag,
+	// then attempt matching a subset of the flag. This allows
 	// -amend to match before -a matches
 	option := s.argv[argPos][charPos:]
 	fmt.Printf("attempt to match '%s'\n", option)
@@ -202,10 +202,10 @@ func (s *scanner) scanOption(argPos, charPos int, allowCombinedOptions bool) err
 		// Are there more un matched characters?
 		if end != len(option) {
 			fmt.Println("more un-matched")
-			// and we can match combined options?
+			// and we can match combined flags?
 			if allowCombinedOptions {
-				// attempt to match the next option
-				return s.scanOption(argPos, end, true)
+				// attempt to match the next flag
+				return s.scanFlag(argPos, end, true)
 			}
 			// If we get here, then we matched part of the option, but it's not our option because
 			// there are trailing characters and allowedCombinedFlags was not set.
@@ -215,7 +215,7 @@ func (s *scanner) scanOption(argPos, charPos int, allowCombinedOptions bool) err
 		// Are there more un matched characters and we can match combined option?
 		/*if charPos+1 != len(option) && allowCombinedOptions {
 			// attempt to match the next option
-			return s.scanOption(argPos, charPos+1, true)
+			return s.scanFlag(argPos, charPos+1, true)
 		}*/
 	}
 	return nil

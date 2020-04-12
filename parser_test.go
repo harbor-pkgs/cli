@@ -23,7 +23,7 @@ func TestParserNoStore(t *testing.T) {
 		v   cli.Variant
 		err string
 	}{
-		{v: &cli.Option{Name: "foo"}, err: "refusing to add option 'foo'; provide an 'IsSet', 'Store' or 'Count' field"},
+		{v: &cli.Flag{Name: "foo"}, err: "refusing to add option 'foo'; provide an 'IsSet', 'Store' or 'Count' field"},
 		{v: &cli.Argument{Name: "foo"}, err: "refusing to add argument 'foo'; provide an 'IsSet', 'Store' or 'Count' field"},
 		{v: &cli.EnvVar{Name: "foo"}, err: "refusing to add envvar 'foo'; provide an 'IsSet' or 'Store' field"},
 	}
@@ -43,7 +43,7 @@ func TestParserNoStore(t *testing.T) {
 func TestParserAddHelpWithOption(t *testing.T) {
 	var hasOption bool
 	p := cli.New(nil)
-	p.Add(&cli.Option{Name: "foo", IsSet: &hasOption})
+	p.Add(&cli.Flag{Name: "foo", IsSet: &hasOption})
 
 	// Given -h
 	retCode, err := p.Parse(nil, []string{"-h"})
@@ -62,7 +62,7 @@ func TestParserAddHelpWithOption(t *testing.T) {
 func TestParserNoArgs(t *testing.T) {
 	var foo string
 	p := cli.New(nil)
-	p.Add(&cli.Option{Name: "foo", Store: &foo})
+	p.Add(&cli.Flag{Name: "foo", Store: &foo})
 
 	// Given no arguments
 	retCode, err := p.Parse(nil, []string{})
@@ -76,7 +76,7 @@ func TestParserNoArgs(t *testing.T) {
 func TestFooOption(t *testing.T) {
 	var foo string
 	p := cli.New(nil)
-	p.Add(&cli.Option{Name: "foo", Store: &foo})
+	p.Add(&cli.Flag{Name: "foo", Store: &foo})
 
 	// Given double prefix
 	retCode, err := p.Parse(nil, []string{"--foo", "bar"})
@@ -98,7 +98,7 @@ func TestFooOption(t *testing.T) {
 func TestOptionExpectedValue(t *testing.T) {
 	var foo string
 	p := cli.New(nil)
-	p.Add(&cli.Option{Name: "foo", Store: &foo})
+	p.Add(&cli.Flag{Name: "foo", Store: &foo})
 
 	// Given
 	retCode, err := p.Parse(nil, []string{"--foo"})
@@ -114,7 +114,7 @@ func TestOptionCount(t *testing.T) {
 	var count int
 
 	p := cli.New(nil)
-	p.Add(&cli.Option{Name: "verbose", Count: &count, Aliases: []string{"v"}})
+	p.Add(&cli.Flag{Name: "verbose", Count: &count, Aliases: []string{"v"}})
 
 	// Given
 	retCode, err := p.Parse(nil, []string{"--verbose", "-v"})
@@ -130,7 +130,7 @@ func TestOptionCountWithValue(t *testing.T) {
 	var foo []string
 
 	p := cli.New(nil)
-	p.Add(&cli.Option{Name: "foo", Store: &foo, Count: &count, Aliases: []string{"f"}})
+	p.Add(&cli.Flag{Name: "foo", Store: &foo, Count: &count, Aliases: []string{"f"}})
 
 	// Given
 	retCode, err := p.Parse(nil, []string{"--foo", "bar", "-f", "bang"})
@@ -147,8 +147,8 @@ func TestOptionIsRequired(t *testing.T) {
 	var foo, bar string
 
 	p := cli.New(nil)
-	p.Add(&cli.Option{Name: "foo", Flags: cli.Required, Store: &foo, Aliases: []string{"f"}})
-	p.Add(&cli.Option{Name: "bar", Store: &bar, Aliases: []string{"b"}})
+	p.Add(&cli.Flag{Name: "foo", Flags: cli.Required, Store: &foo, Aliases: []string{"f"}})
+	p.Add(&cli.Flag{Name: "bar", Store: &bar, Aliases: []string{"b"}})
 
 	// Given
 	retCode, err := p.Parse(nil, []string{"-b", "bar"})
@@ -164,7 +164,7 @@ func TestOptionReplace(t *testing.T) {
 	var foo []string
 
 	p := cli.New(nil)
-	p.Add(&cli.Option{Name: "foo", Store: &foo, Default: "bash", Count: &count, Aliases: []string{"f"}})
+	p.Add(&cli.Flag{Name: "foo", Store: &foo, Default: "bash", Count: &count, Aliases: []string{"f"}})
 
 	// Given
 	retCode, err := p.Parse(nil, []string{"--foo", "bar", "-f", "bang"})
@@ -251,7 +251,7 @@ func TestArgumentAndOptions(t *testing.T) {
 	var bar, foo, flag string
 
 	p := cli.New(nil)
-	p.Add(&cli.Option{Name: "flag", Store: &flag})
+	p.Add(&cli.Flag{Name: "flag", Store: &flag})
 	p.Add(&cli.Argument{Name: "bar", Store: &bar})
 	p.Add(&cli.Argument{Name: "foo", Store: &foo})
 
@@ -271,7 +271,7 @@ func TestRuleNameCollision(t *testing.T) {
 	p := cli.New(nil)
 
 	// Given
-	p.Add(&cli.Option{Name: "bar", Store: &flag})
+	p.Add(&cli.Flag{Name: "bar", Store: &flag})
 	p.Add(&cli.Argument{Name: "bar", Store: &bar})
 	p.Add(&cli.Argument{Name: "foo", Store: &foo})
 	retCode, err := p.Parse(nil, []string{})
@@ -311,7 +311,7 @@ func TestInvalidRuleNames(t *testing.T) {
 	p := cli.New(nil)
 
 	// Given
-	p.Add(&cli.Option{Name: "*bar", Store: &flag})
+	p.Add(&cli.Flag{Name: "*bar", Store: &flag})
 	p.Add(&cli.Argument{Name: "foo", Store: &foo})
 	retCode, err := p.Parse(nil, []string{})
 
@@ -326,10 +326,10 @@ func TestPartialMatchArgs(t *testing.T) {
 
 	p := cli.New(nil)
 	p.Add(
-		&cli.Option{Name: "foo", Store: &foo},
-		&cli.Option{Name: "foo-bang", Store: &fooBang},
-		&cli.Option{Name: "foobar", Store: &fooBar},
-		&cli.Option{Name: "bang", Store: &bang},
+		&cli.Flag{Name: "foo", Store: &foo},
+		&cli.Flag{Name: "foo-bang", Store: &fooBang},
+		&cli.Flag{Name: "foobar", Store: &fooBar},
+		&cli.Flag{Name: "bang", Store: &bang},
 	)
 
 	// Given no value
@@ -363,7 +363,7 @@ func TestInvalidAliases(t *testing.T) {
 	p := cli.New(nil)
 
 	// Given
-	p.Add(&cli.Option{Name: "bar", Aliases: []string{"-b"}, Store: &flag})
+	p.Add(&cli.Flag{Name: "bar", Aliases: []string{"-b"}, Store: &flag})
 	p.Add(&cli.Argument{Name: "foo", Store: &foo})
 	retCode, err := p.Parse(nil, []string{})
 
@@ -379,7 +379,7 @@ func TestUnknownArgs(t *testing.T) {
 	p := cli.New(nil)
 
 	// Given
-	p.Add(&cli.Option{Name: "bar", Aliases: []string{"b"}, IsSet: &flag})
+	p.Add(&cli.Flag{Name: "bar", Aliases: []string{"b"}, IsSet: &flag})
 	p.Add(&cli.Argument{Name: "foo", Store: &foo})
 	retCode, err := p.Parse(nil, []string{"-b", "-g", "bar"})
 
