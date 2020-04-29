@@ -25,7 +25,7 @@ func Example_complete() {
 	})
 
 	// Store Integers directly into a struct field with a default value
-	parser.Add(&cli.Option{
+	parser.Add(&cli.Flag{
 		Help:    "Set our power level to over 5000!",
 		Store:   &conf.PowerLevel,
 		Aliases: []string{"p"},
@@ -35,7 +35,7 @@ func Example_complete() {
 	})
 
 	// Add an environment variable as a possible source for the argument
-	parser.Add(&cli.Option{
+	parser.Add(&cli.Flag{
 		Help:    "Send a message to your enemies, make them quake in fear",
 		Default: "over-ten-thousand",
 		Store:   &conf.Message,
@@ -45,7 +45,7 @@ func Example_complete() {
 	})
 
 	// Pass a comma separated list of strings and get a []string slice
-	parser.Add(&cli.Option{
+	parser.Add(&cli.Flag{
 		Help:    "List of weapons to choose from separated by a comma",
 		Default: "vi,emacs,pico",
 		Store:   conf.Weapons,
@@ -55,7 +55,7 @@ func Example_complete() {
 	})
 
 	// Count the number of times an option is seen
-	parser.Add(&cli.Option{
+	parser.Add(&cli.Flag{
 		Help:    "Declare to the world after each evil is vanquished",
 		Aliases: []string{"v"},
 		Count:   &conf.Verbose,
@@ -63,7 +63,7 @@ func Example_complete() {
 	})
 
 	// Set bool to true if the option is present on the command line
-	parser.Add(&cli.Option{
+	parser.Add(&cli.Flag{
 		Help:    "Turn on universe debug, it must give up it's secrets",
 		Aliases: []string{"d"},
 		Name:    "debug",
@@ -71,7 +71,7 @@ func Example_complete() {
 	})
 
 	// --help option is provided by default, however you can override
-	parser.Add(&cli.Option{
+	parser.Add(&cli.Flag{
 		Help:    "Show this help message and exit",
 		Aliases: []string{"H"},
 		Name:    "help",

@@ -17,7 +17,7 @@ type SetValue interface {
 	Set(string) error
 }
 
-type Option struct {
+type Flag struct {
 	Name      string
 	Help      string
 	Env       string
@@ -53,11 +53,11 @@ type Option struct {
 	IsSet *bool
 }
 
-func (f *Option) name() string {
+func (f *Flag) name() string {
 	return f.Name
 }
 
-func (f *Option) toRule() (*rule, error) {
+func (f *Flag) toRule() (*rule, error) {
 	if f.Name == "" {
 		return nil, fmt.Errorf("failed to add new option; 'Name' is required")
 	}

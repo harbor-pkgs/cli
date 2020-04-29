@@ -129,7 +129,7 @@ func (r ruleList) GetRuleByAlias(alias string) *rule {
 	return nil
 }
 
-func (r ruleList) GetAliases() []string {
+func (r ruleList) GetFlagAliases() []string {
 	var results []string
 	for _, rule := range r {
 		results = append(results, rule.Aliases...)

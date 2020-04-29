@@ -146,9 +146,6 @@ func (p *Parser) ParseOrExit() {
 // TODO: Support out of band command bash completions and in-band bash completions
 // Parses command line arguments using os.Args if 'args' is nil.
 func (p *Parser) Parse(ctx context.Context, argv []string) (int, error) {
-	// Clear any previously parsed abstract
-	p.abstract = nil
-
 	// Report Add() errors
 	if len(p.errs) != 0 {
 		return ErrorRetCode, p.errs[0]
@@ -163,14 +160,9 @@ func (p *Parser) Parse(ctx context.Context, argv []string) (int, error) {
 
 	// If we are the top most parent
 	if p.parent == nil {
-		// Allowing a sub parser to change our args can cause panics when collecting values
-		p.argv = os.Args
-		if argv != nil {
-			p.argv = argv
-		}
 		// If user requested we add a help option, and if one is not already defined
 		if !p.HasMode(NoHelp) && p.rules.GetRuleByFlag(isHelpRule) == nil {
-			p.Add(&Option{
+			p.Add(&Flag{
 				Help:    "display this help message and exit",
 				Name:    "help",
 				Flags:   isHelpRule,
@@ -187,10 +179,6 @@ func (p *Parser) Parse(ctx context.Context, argv []string) (int, error) {
 		return ErrorRetCode, err
 	}
 
-	// TODO: Sorting the rules might not matter anymore, don't forget to remove the sort methods on rules
-	// Sort the rules so argument/command rules are evaluated last
-	//sort.Sort(p.rules)
-
 	// Sort the aliases such that we evaluate longer alias names first
 	for _, r := range p.rules {
 		// TODO: Sort by length first, then alpha
@@ -199,60 +187,70 @@ func (p *Parser) Parse(ctx context.Context, argv []string) (int, error) {
 
 	//fmt.Printf("rules: %s\n", p.rules.String())
 
+	// TODO: Create LexNode's from the argv input
+	p.lex, err = toLex(argv)
+
+	// TODO: Find flags or expand flags in the lex
+
+	// TODO: Find arguments and sub-commands in lex
+
 	// Scan the argv and attempt to assign rules to argv positions, this is
 	// only a best effort since a sub command might add new options and args.
-	if p.abstract, err = scanArgv(p); err != nil {
+	/*if p.abstract, err = scanArgv(p); err != nil {
 		fmt.Println("scan fail")
 		// report options that expect values
 		return ErrorRetCode, err
 	}
 
-	/*if subCmd := p.nextSubCmd(); subCmd != nil {
+	if subCmd := p.nextSubCmd(); subCmd != nil {
 		// Run the sub command
 		// TODO: Might not need to make a copy of ourselves, just pass in the current parser
 		return subCmd(ctx, New(p))
-	}*/
+	}
 
-	fmt.Printf("abstract: %s\n", p.abstract.String())
+	fmt.Printf("abstract: %s\n", p.abstract.String())*/
 	// --help is a special case option, as it short circuits the normal store
 	// and validation of arguments. This allows the user to pass other arguments
 	// along side -h and still get a help message before getting invalid arg errors
 	// TODO: Support other short circuit options besides -h, in the case a user wishes to
 	// TODO: Not use -h has the help option.
-	if p.abstract.FindWithFlag(isHelpRule) != nil {
+	if p.lex.FindWithFlag(isHelpRule) != nil {
 		fmt.Printf("type %s\n", reflect.TypeOf(&HelpError{}))
 		return ErrorRetCode, &HelpError{}
 	}
 
 	// If we get here, we are at the top of the parent tree and we can assign positional arguments
-	if err := p.applyArguments(); err != nil {
+	/*if err := p.applyArguments(); err != nil {
 		return ErrorRetCode, err
-	}
+	}*/
 
-	results := newResultStore(p.rules)
+	// Given the lex, create a store of results
+	results := newResultStore(p.lex)
 
 	// TODO: Put all the stores in `p.stores` and process them in this for loop.
 	//  This might provide future features like, having a user store take precedence over
 	//  an Env store.
 
-	// Retrieve values from any stores provided by the user first
+	// Retrieve values from external stores provided by the user first
 	for _, store := range p.stores {
 		if err := results.From(ctx, store); err != nil {
 			return ErrorRetCode, fmt.Errorf("while reading from store '%s': %s", store.Source(), err)
 		}
 	}
 	fmt.Printf("User store: %+v\n", results.values)
+
 	if err := results.From(ctx, newEnvStore(p.rules)); err != nil {
 		return ErrorRetCode, err
 	}
 	fmt.Printf("Env store: %+v\n", results.values)
-	if err := results.From(ctx, p.abstract); err != nil {
+
+	if err := results.From(ctx, p.lex); err != nil {
 		return ErrorRetCode, err
 	}
-	fmt.Printf("Syntax store: %+v\n", results.values)
+	fmt.Printf("Lex store: %+v\n", results.values)
 
 	// Apply defaults and validate required values are provided then store values
-	return p.validateAndStore(results)
+	return p.validateAndStore(results, p.lex)
 }
 
 func (p *Parser) validateAndStore(rs *resultStore) (int, error) {

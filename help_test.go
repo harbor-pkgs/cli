@@ -27,10 +27,10 @@ func TestHelpMessage(t *testing.T) {
 	)
 
 	p.Add(
-		&cli.Option{Name: "flag", IsSet: &hasFlag, Help: "this is my flag"},
-		&cli.Option{Name: "foo", Store: &foo, Aliases: []string{"f"}, Help: "used to store bars"},
-		&cli.Option{Name: "bar", Store: &bar, Help: "used to store number of foo's"},
-		&cli.Option{Name: "true", Store: &isTrue, Help: "is very true"},
+		&cli.Flag{Name: "flag", IsSet: &hasFlag, Help: "this is my flag"},
+		&cli.Flag{Name: "foo", Store: &foo, Aliases: []string{"f"}, Help: "used to store bars"},
+		&cli.Flag{Name: "bar", Store: &bar, Help: "used to store number of foo's"},
+		&cli.Flag{Name: "true", Store: &isTrue, Help: "is very true"},
 	)
 
 	p.Add(
@@ -93,7 +93,7 @@ func TestGenerateConfig(t *testing.T) {
 	p.Add(&cli.EnvVar{Name: "endpoints", Env: "ENDPOINTS", Store: &endpoints,
 		Help: "A comma separated list of endpoints our application can connect too"})
 
-	p.Add(&cli.Option{Name: "thing", Env: "THE_THING", Store: &thing, Default: "Let's call it a thingamajig",
+	p.Add(&cli.Flag{Name: "thing", Env: "THE_THING", Store: &thing, Default: "Let's call it a thingamajig",
 		Help: "This is a rather simple thing"})
 
 	// Given
